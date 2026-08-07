@@ -10,7 +10,7 @@ window.STORE_CONFIG = {
   /* ---------- Store identity ---------- */
   store: {
     name: "Saawariya Boutique",
-    tagline: "Handpicked Sarees, Jewelry & Accessories",
+    tagline: "Handpicked Jewelry & Accessories",
     // WhatsApp number in international format, digits only (no +, no spaces, no dashes)
     // Example: India 91 98765 43210  ->  "919876543210"
     whatsappNumber: "919876543210",
@@ -20,7 +20,7 @@ window.STORE_CONFIG = {
   },
 
   /* ---------- Category filter pills (first one is the default) ---------- */
-  categories: ["All", "Sarees", "Jewelry", "Accessories"],
+  categories: ["All", "Jewelry", "Accessories"],
 
   /* ---------- Products ----------
    * image: can be a local path ("/products/saree1.jpg") or any URL.
@@ -28,16 +28,6 @@ window.STORE_CONFIG = {
    * inStock: false greys out the card and disables add-to-cart.
    */
   products: [
-    {
-      id: "s4",
-      name: "Designer Saree — Maroon Festive",
-      price: 2899,
-      originalPrice: 3600,
-      category: "Sarees",
-      image: "https://images.pexels.com/photos/30193764/pexels-photo-30193764.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
-      description: "Festive designer saree with intricate sequin work. Ideal for weddings.",
-      inStock: false,
-    },
     {
       id: "j1",
       name: "Layered Gold Necklace Set",

@@ -42,7 +42,6 @@
   const cartPanel = $("cartPanel");
   const cartClose = $("cartClose");
   const cartItemsEl = $("cartItems");
-  const cartEmpty = $("cartEmpty");
   const cartFoot = $("cartFoot");
   const cartTotalEl = $("cartTotal");
   const checkoutForm = $("checkoutForm");
@@ -256,11 +255,9 @@
   function renderCart() {
     cartItemsEl.innerHTML = "";
     if (!cart.length) {
-      cartEmpty.hidden = false;
       cartFoot.style.display = "none";
       return;
     }
-    cartEmpty.hidden = true;
     cartFoot.style.display = "";
 
     cart.forEach((i) => {
