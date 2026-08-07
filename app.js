@@ -67,6 +67,11 @@
   function findProduct(id) {
     return products.find((p) => p.id === id);
   }
+  function resolveProductImage(p) {
+    if (p.image && p.image.startsWith("/")) return p.image;
+    if (p.image) return p.image;
+    return `/products/${encodeURIComponent(p.id)}.jpeg`;
+  }
   function cartQty() {
     return cart.reduce((s, i) => s + i.qty, 0);
   }
@@ -157,7 +162,7 @@
       imgWrap.className = "card__img-wrap";
       const img = document.createElement("img");
       img.className = "card__img";
-      img.src = p.image;
+      img.src = resolveProductImage(p);
       img.alt = p.name;
       img.loading = "lazy";
       imgWrap.appendChild(img);
@@ -268,7 +273,7 @@
 
       const img = document.createElement("img");
       img.className = "cart-item__img";
-      img.src = p.image;
+      img.src = resolveProductImage(p);
       img.alt = p.name;
       img.loading = "lazy";
 
