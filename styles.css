@@ -6,17 +6,17 @@
 
 :root {
   /* ---- Brand colors (edit these) ---- */
-  --accent: #0f766e;          /* primary accent (set by store-config.js) */
-  --accent-dark: #115e59;    /* darker accent for hover/gradient        */
+  --accent: #c96c8a;          /* primary accent (set by store-config.js) */
+  --accent-dark: #8f4160;    /* darker accent for hover/gradient        */
 
   /* ---- Neutrals ---- */
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --text: #1a1a1a;
-  --text-soft: #5b6470;
-  --border: #e7e9ee;
-  --shadow: 0 1px 3px rgba(16, 24, 40, .06), 0 4px 16px rgba(16, 24, 40, .04);
-  --shadow-lg: 0 8px 30px rgba(16, 24, 40, .14);
+  --bg: #fff7f5;
+  --surface: #fffdfa;
+  --text: #3c2232;
+  --text-soft: #7e5a69;
+  --border: #f3dfe8;
+  --shadow: 0 1px 3px rgba(201, 108, 138, .08), 0 4px 16px rgba(143, 65, 96, .08);
+  --shadow-lg: 0 8px 30px rgba(143, 65, 96, .12);
 
   /* ---- Shape ---- */
   --radius-sm: 10px;
@@ -42,7 +42,7 @@ html { -webkit-text-size-adjust: 100%; }
 body {
   font-family: var(--font);
   color: var(--text);
-  background: var(--bg);
+  background: linear-gradient(180deg, #fff7f5 0%, #fffdfa 100%);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   padding-bottom: 80px;
@@ -221,7 +221,7 @@ input, textarea { font-family: inherit; font-size: 1rem; }
 .card:hover .card__img { transform: scale(1.05); }
 .card__badge {
   position: absolute; top: 8px; left: 8px;
-  background: #e23744; color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff;
   font-size: .7rem; font-weight: 700;
   padding: 4px 8px; border-radius: 999px;
   letter-spacing: .02em;
