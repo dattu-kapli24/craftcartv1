@@ -17,6 +17,22 @@ function renderForm() {
   document.getElementById('accentColor').value = currentConfig.store.accentColor;
   document.getElementById('accentColorDark').value = currentConfig.store.accentColorDark;
 
+  // Real-time logo update
+  document.getElementById('name').addEventListener('input', (e) => {
+    const brandLogo = document.getElementById('brandLogo');
+    if (brandLogo) brandLogo.textContent = e.target.value.charAt(0).toUpperCase() || 'A';
+  });
+
+  // Update logo initial
+  const brandLogo = document.getElementById('brandLogo');
+  if (brandLogo && currentConfig.store.name) {
+    brandLogo.textContent = currentConfig.store.name.charAt(0).toUpperCase();
+  }
+
+  // Set CSS variables for accent colors in admin view
+  document.documentElement.style.setProperty('--accent', currentConfig.store.accentColor);
+  document.documentElement.style.setProperty('--accent-dark', currentConfig.store.accentColorDark);
+
   // Categories
   renderCategories();
 
@@ -164,11 +180,20 @@ document.getElementById('adminForm').addEventListener('submit', async (e) => {
   }
 });
 
+let toastTimer;
 function showToast(msg) {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
   toast.hidden = false;
-  setTimeout(() => { toast.hidden = true; }, 3000);
+  // Use requestAnimationFrame to ensure the hidden=false is processed before adding the class
+  requestAnimationFrame(() => toast.classList.add('toast--show'));
+
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('toast--show');
+    // Wait for the transition to finish before hiding
+    setTimeout(() => { toast.hidden = true; }, 250);
+  }, 2500);
 }
 
 fetchConfig();
