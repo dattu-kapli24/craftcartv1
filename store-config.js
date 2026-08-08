@@ -76,12 +76,12 @@ window.STORE_CONFIG = {
       "inStock": true
     },
     {
-      "id": "new-1786174478138",
-      "name": "rose cake",
-      "price": 1000,
-      "category": "Classic Cakes",
-      "image": "/products/1786174721493-rose_cake.PNG",
-      "description": "",
+      "id": "new-1786181839228",
+      "name": "rosecake",
+      "price": 2000,
+      "category": "All",
+      "image": "/products/1786181863592-rose_cake.PNG",
+      "description": "ee",
       "inStock": true
     }
   ]
