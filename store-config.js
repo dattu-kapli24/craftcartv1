@@ -9,11 +9,11 @@ window.STORE_CONFIG = {
 
   /* ---------- Store identity ---------- */
   store: {
-    name: "CraftCreative ResinArt",
-    tagline: "by Shridevi",
+    name: "CraftCreative Cart",
+    tagline: "",
     // WhatsApp number in international format, digits only (no +, no spaces, no dashes)
     // Example: India 91 98765 43210  ->  "919876543210"
-    whatsappNumber: "919844592771",
+    whatsappNumber: "918722661098",
     currencySymbol: "₹",
     accentColor: "#c96c8a",      // rose-pink resin art accent
     accentColorDark: "#8f4160",  // deeper rose for hover/gradient
