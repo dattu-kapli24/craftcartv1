@@ -472,6 +472,9 @@ input, textarea { font-family: inherit; font-size: 1rem; }
     flex-wrap: wrap;
     align-items: flex-start;
     gap: 10px;
+    height: auto;
+    min-height: var(--header-h);
+    padding-bottom: 10px;
   }
   .brand {
     flex: 1 1 100%;
