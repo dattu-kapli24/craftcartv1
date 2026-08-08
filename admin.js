@@ -55,8 +55,10 @@ function renderCategories() {
 }
 
 function removeCategory(index) {
+  const cat = currentConfig.categories[index];
   currentConfig.categories.splice(index, 1);
   renderCategories();
+  showToast(`Category "${cat}" removed`);
 }
 
 document.getElementById('addCategoryBtn').addEventListener('click', () => {
@@ -66,6 +68,7 @@ document.getElementById('addCategoryBtn').addEventListener('click', () => {
     currentConfig.categories.push(val);
     input.value = '';
     renderCategories();
+    showToast(`Category "${val}" added`);
   }
 });
 
@@ -115,12 +118,14 @@ function updateProduct(index, field, value) {
 }
 
 function removeProduct(index) {
+  const name = currentConfig.products[index].name;
   currentConfig.products.splice(index, 1);
   renderProducts();
+  showToast(`Product "${name}" removed`);
 }
 
 document.getElementById('addProductBtn').addEventListener('click', () => {
-  currentConfig.products.push({
+  const newProd = {
     id: 'new-' + Date.now(),
     name: 'New Product',
     price: 0,
@@ -128,8 +133,10 @@ document.getElementById('addProductBtn').addEventListener('click', () => {
     image: '/products/placeholder.jpg',
     description: '',
     inStock: true
-  });
+  };
+  currentConfig.products.push(newProd);
   renderProducts();
+  showToast('New product added to the list');
 });
 
 async function uploadImage(index, file) {
@@ -185,15 +192,25 @@ function showToast(msg) {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
   toast.hidden = false;
-  // Use requestAnimationFrame to ensure the hidden=false is processed before adding the class
-  requestAnimationFrame(() => toast.classList.add('toast--show'));
 
+  // Clear any existing timer to prevent premature hiding
   clearTimeout(toastTimer);
+
+  // Use requestAnimationFrame to ensure the hidden=false is processed
+  requestAnimationFrame(() => {
+    toast.classList.add('toast--show');
+  });
+
+  // Keep the toast visible for 4 seconds for better readability
   toastTimer = setTimeout(() => {
     toast.classList.remove('toast--show');
-    // Wait for the transition to finish before hiding
-    setTimeout(() => { toast.hidden = true; }, 250);
-  }, 2500);
+    // Wait for the CSS transition (0.25s) to finish before hiding the element
+    setTimeout(() => {
+      if (!toast.classList.contains('toast--show')) {
+        toast.hidden = true;
+      }
+    }, 300);
+  }, 4000);
 }
 
 fetchConfig();

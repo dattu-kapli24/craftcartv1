@@ -135,3 +135,23 @@
   border-radius: 4px;
   background: #f1f5f9;
 }
+
+/* Enhanced Toast for Admin */
+.toast {
+  background: #1e293b;
+  border: 1px solid #334155;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+  padding: 14px 24px;
+  letter-spacing: 0.01em;
+}
+
+/* Enhanced Toast for Admin */
+.toast {
+  background: #334155;
+  padding: 14px 28px;
+  font-size: 1rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(8px);
+  min-width: 250px;
+}
