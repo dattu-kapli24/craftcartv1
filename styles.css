@@ -81,13 +81,16 @@ input, textarea { font-family: inherit; font-size: 1rem; }
 .brand__text { min-width: 0; }
 .brand__name {
   font-size: 1.02rem; font-weight: 700;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 38vw;
+  line-height: 1.15;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 .brand__tagline {
   font-size: var(--fs-sm); color: var(--text-soft);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 44vw;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  margin-top: 2px;
 }
 
 /* Search */
@@ -465,7 +468,29 @@ input, textarea { font-family: inherit; font-size: 1rem; }
 
 /* ---------- Small screens: compact header ---------- */
 @media (max-width: 480px) {
-  .brand__tagline { display: none; }
-  .header__search { flex-basis: 120px; }
-  .brand__name { max-width: 30vw; }
+  .header__inner {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .brand {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .brand__text {
+    min-width: 0;
+  }
+  .brand__name {
+    max-width: 100%;
+  }
+  .brand__tagline {
+    display: block;
+    max-width: 100%;
+    white-space: normal;
+  }
+  .header__search {
+    flex: 1 1 100%;
+    width: 100%;
+    margin-top: 8px;
+  }
 }
