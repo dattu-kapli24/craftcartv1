@@ -9,7 +9,7 @@ window.STORE_CONFIG = {
   "store": {
     "name": "Baker's Classic Cakes",
     "tagline": "Freshly baked goodness delivered to your doorstep",
-    "whatsappNumber": "917894561230",
+    "whatsappNumber": "918073511215",
     "currencySymbol": "₹",
     "accentColor": "#d2691e",
     "accentColorDark": "#8b4513"
