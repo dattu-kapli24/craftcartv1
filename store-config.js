@@ -58,15 +58,6 @@ window.STORE_CONFIG = {
       "inStock": true
     },
     {
-      "id": "pineapple-cake",
-      "name": "Pineapple Upside Down Cake",
-      "price": 850,
-      "category": "Classic Cakes",
-      "image": "/products/pineapple-cake.jpg",
-      "description": "Sweet and tangy pineapple cake with a caramelized topping.",
-      "inStock": true
-    },
-    {
       "id": "butterscotch-cake",
       "name": "Butterscotch Crunch Cake",
       "price": 950,
@@ -81,7 +72,16 @@ window.STORE_CONFIG = {
       "price": 2000,
       "category": "All",
       "image": "/products/1786181863592-rose_cake.PNG",
-      "description": "ee",
+      "description": "rose berry cake",
+      "inStock": true
+    },
+    {
+      "id": "new-1786199513074",
+      "name": "Pineapple cake",
+      "price": 550,
+      "category": "Classic Cakes",
+      "image": "/products/1786199617712-pineapplecake.png",
+      "description": "pineapple cake baked with fruits",
       "inStock": true
     }
   ]
