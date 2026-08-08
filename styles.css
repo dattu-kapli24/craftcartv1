@@ -170,7 +170,7 @@ input, textarea { font-family: inherit; font-size: 1rem; }
   transition: all .2s ease;
 }
 .pill:hover { border-color: var(--accent); color: var(--accent); }
-.pill--active {
+.pill--active, .pill--active:hover {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
