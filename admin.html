@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — CraftCart</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-body">
+  <header class="header">
+    <div class="header__inner">
+      <div class="brand">
+        <div class="brand__logo" id="brandLogo">A</div>
+        <div class="brand__text">
+          <h1 class="brand__name">Admin Dashboard</h1>
+          <p class="brand__tagline">Manage your store configuration</p>
+        </div>
+      </div>
+      <a href="/" class="cart-btn" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 8px;">
+        <span>View Store</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="main">
+    <form id="adminForm" class="admin-form">
+      <!-- Store Identity -->
+      <section class="admin-section">
+        <h2>Store Identity</h2>
+        <div class="form-group">
+          <label for="name">Store Name</label>
+          <input type="text" id="name" name="name" required>
+        </div>
+        <div class="form-group">
+          <label for="tagline">Tagline</label>
+          <input type="text" id="tagline" name="tagline">
+        </div>
+        <div class="form-group">
+          <label for="whatsappNumber">WhatsApp Number (Digits only)</label>
+          <input type="text" id="whatsappNumber" name="whatsappNumber" required>
+        </div>
+        <div class="form-group">
+          <label for="currencySymbol">Currency Symbol</label>
+          <input type="text" id="currencySymbol" name="currencySymbol" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="accentColor">Accent Color</label>
+            <input type="color" id="accentColor" name="accentColor">
+          </div>
+          <div class="form-group">
+            <label for="accentColorDark">Accent Color Dark</label>
+            <input type="color" id="accentColorDark" name="accentColorDark">
+          </div>
+        </div>
+      </section>
+
+      <!-- Categories -->
+      <section class="admin-section">
+        <h2>Categories</h2>
+        <div id="categoriesList" class="tags-input">
+          <!-- Categories will be rendered here -->
+        </div>
+        <div class="form-row" style="margin-top: 10px;">
+          <input type="text" id="newCategory" placeholder="New category name">
+          <button type="button" id="addCategoryBtn" class="btn-secondary">Add</button>
+        </div>
+      </section>
+
+      <!-- Products -->
+      <section class="admin-section">
+        <h2>Products</h2>
+        <div id="productsList" class="admin-products-grid">
+          <!-- Products will be rendered here -->
+        </div>
+        <button type="button" id="addProductBtn" class="btn-secondary" style="margin-top: 20px; width: 100%;">+ Add New Product</button>
+      </section>
+
+      <div class="admin-actions">
+        <button type="submit" class="btn-whatsapp">Save All Changes</button>
+      </div>
+    </form>
+  </main>
+
+  <!-- Toast for feedback -->
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
