@@ -1,14 +1,26 @@
-import { getStoreData, saveStoreConfig, uploadImageToFirebase, onAuthChange, logoutAdmin, getStoreIdFromUrl } from "./firebase-service.js";
+import { getStoreData, saveStoreConfig, uploadImageToCloud, onAuthChange, logoutAdmin, getStoreIdFromUrl, findStoreByOwner } from "./firebase-service.js";
 
 let currentConfig = null;
-const storeId = getStoreIdFromUrl();
+let storeId = getStoreIdFromUrl();
 
-console.log(`Admin Dashboard for: ${storeId}`);
+console.log(`Admin Dashboard Initialized. Current storeId from URL: ${storeId}`);
 
-onAuthChange((user) => {
+onAuthChange(async (user) => {
   if (!user) {
     window.location.href = `/login.html?store=${storeId}`;
   } else {
+    // AUTO-STORE DISCOVERY
+    // If no storeId in URL or it's 'demo', try to find the store owned by this user
+    if (!storeId || storeId === 'demo') {
+      const discoveredId = await findStoreByOwner(user.uid);
+      if (discoveredId) {
+        storeId = discoveredId;
+        console.log(`Auto-discovered store for user: ${storeId}`);
+        // Optional: Update URL without refreshing to keep it clean
+        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + `?store=${storeId}`;
+        window.history.pushState({path:newUrl},'',newUrl);
+      }
+    }
     fetchConfig();
   }
 });
@@ -93,9 +105,9 @@ function renderProducts() {
       <div class="form-group"><label>Description</label><textarea onchange="updateProduct(${index}, 'description', this.value)">${prod.description || ''}</textarea></div>
       <div class="form-group">
         <label>Image</label>
-        <div style="display: flex; gap: 10px; align-items: center;">
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
           <img src="${prod.image}" class="product-preview-img" id="prev-${index}">
-          <input type="file" accept="image/*" onchange="uploadImage(${index}, this.files[0])">
+          <input type="file" accept=".jpg,.jpeg,.png,.webp" onchange="uploadImage(${index}, this.files[0])" style="font-size: 0.8rem;">
         </div>
       </div>
     `;
@@ -117,24 +129,26 @@ document.getElementById('addProductBtn').onclick = () => {
   renderProducts();
 };
 
-async function uploadImage(index, file) {
+window.uploadImage = async (index, file) => {
   if (!file) return;
   showToast('Uploading to Cloudinary...');
-  const result = await uploadImageToCloud(file);
-  if (result.url) {
-    currentConfig.products[index].image = result.url;
-    document.getElementById(`prev-${index}`).src = result.url;
+  const res = await uploadImageToCloud(file);
+  if (res.url) {
+    currentConfig.products[index].image = res.url;
+    const imgEl = document.getElementById(`prev-${index}`);
+    if (imgEl) imgEl.src = res.url;
     showToast('Image uploaded successfully');
   } else {
-    showToast('Upload failed: ' + (result.error || 'Unknown error'));
+    showToast('Upload failed: ' + (res.error || 'Unknown error'));
   }
-}
+};
 
 document.getElementById('adminForm').onsubmit = async (e) => {
   e.preventDefault();
   showToast('Saving...');
   const res = await saveStoreConfig(storeId, currentConfig);
   if (res.success) showToast('Saved Successfully!');
+  else showToast('Error: ' + res.error);
 };
 
 document.getElementById('logoutBtn').onclick = async () => {
@@ -144,8 +158,12 @@ document.getElementById('logoutBtn').onclick = async () => {
 
 function showToast(msg) {
   const toast = document.getElementById('toast');
+  if (!toast) return;
   toast.textContent = msg;
   toast.hidden = false;
   toast.classList.add('toast--show');
-  setTimeout(() => { toast.hidden = true; toast.classList.remove('toast--show'); }, 3000);
+  setTimeout(() => {
+    toast.classList.remove('toast--show');
+    setTimeout(() => { toast.hidden = true; }, 300);
+  }, 3000);
 }

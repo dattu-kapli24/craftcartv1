@@ -34,6 +34,21 @@ export async function loginAdmin(email, password) {
   }
 }
 
+// FIND STORE BY OWNER
+export async function findStoreByOwner(uid) {
+  try {
+    const q = query(collection(db, "stores"), where("ownerId", "==", uid));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      return querySnapshot.docs[0].id;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error finding store:", error);
+    return null;
+  }
+}
+
 // FETCH MULTI-TENANT CONFIG
 export async function getStoreData(storeId) {
   try {
