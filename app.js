@@ -4,7 +4,13 @@ import { getStoreConfig } from "./firebase-service.js";
   "use strict";
 
   /* ---------- 1. Read config ---------- */
-  let CFG = await getStoreConfig();
+  let CFG = null;
+
+  try {
+    CFG = await getStoreConfig();
+  } catch (err) {
+    console.error("Firebase fetch failed:", err);
+  }
 
   // Fallback to local config if firebase is empty (migration path)
   if (!CFG) {
@@ -12,7 +18,7 @@ import { getStoreConfig } from "./firebase-service.js";
   }
 
   if (!CFG) {
-    document.body.innerHTML = "<p style='padding:2rem;font-family:sans-serif'>Waiting for store configuration...</p>";
+    document.body.innerHTML = "<p style='padding:2rem;font-family:sans-serif'>Waiting for store configuration... <br><small>If you are the owner, please go to /admin and Sync to Cloud.</small></p>";
     return;
   }
 

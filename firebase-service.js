@@ -14,7 +14,14 @@ const STORE_ID = window.STORE_ID || "shridevi-resinart";
 const CONFIG_DOC_ID = "config";
 const CONFIG_COLLECTION = `stores/${STORE_ID}/settings`;
 
-export { auth, onAuthStateChanged, signOut };
+// Authentication Helper
+export function onAuthChange(callback) {
+  onAuthStateChanged(auth, callback);
+}
+
+export function logoutAdmin() {
+  return signOut(auth);
+}
 
 export async function loginAdmin(email, password) {
   try {

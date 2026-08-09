@@ -1,12 +1,13 @@
-import { getStoreConfig, saveStoreConfig, uploadImageToFirebase, onAuthStateChanged, signOut } from "./firebase-service.js";
+import { getStoreConfig, saveStoreConfig, uploadImageToFirebase, onAuthChange, logoutAdmin } from "./firebase-service.js";
+
+let currentConfig = null;
 
 // Check authentication status immediately
-onAuthStateChanged((user) => {
+onAuthChange((user) => {
   if (!user) {
     window.location.href = '/login.html';
   } else {
-    // Remove the automatic call to fetchConfig() at the end
-// fetchConfig();
+    fetchConfig();
   }
 });
 
@@ -211,18 +212,19 @@ document.getElementById('adminForm').addEventListener('submit', async (e) => {
   }
 });
 
-document.getElementById('migrateBtn').addEventListener('click', async () => {
-  if (confirm('This will overwrite cloud settings with your local file settings. Proceed?')) {
-    showToast('Syncing...');
-    currentConfig = JSON.parse(JSON.stringify(window.STORE_CONFIG));
-    const result = await saveStoreConfig(currentConfig);
-    if (result.success) {
-      renderForm();
-      showToast('Local config successfully synced to Cloud!');
-    } else {
-      showToast('Sync failed: ' + result.error);
-    }
-  }
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await logoutAdmin();
+  window.location.href = '/login.html';
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await logoutAdmin();
+  window.location.href = '/login.html';
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await logoutAdmin();
+  window.location.href = '/login.html';
 });
 
 let toastTimer;
