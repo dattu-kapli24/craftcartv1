@@ -93,13 +93,30 @@ export async function saveStoreConfig(storeId, config) {
   }
 }
 
-export async function uploadImageToFirebase(storeId, file) {
+import { cloudinaryConfig } from "./firebase-config.js";
+
+export async function uploadImageToCloud(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", cloudinaryConfig.uploadPreset);
+
   try {
-    const storageRef = ref(storage, `stores/${storeId}/products/${Date.now()}-${file.name}`);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
-    return { url };
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const data = await response.json();
+    if (data.secure_url) {
+      return { url: data.secure_url };
+    } else {
+      return { error: data.error?.message || "Upload failed" };
+    }
   } catch (error) {
+    console.error("Cloudinary upload error:", error);
     return { error: error.message };
   }
 }

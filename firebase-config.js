@@ -7,3 +7,8 @@ export const firebaseConfig = {
   appId: "1:437087620630:web:b24d871bd74904c2326f37",
   measurementId: "G-NTMT1W9699"
 };
+
+export const cloudinaryConfig = {
+  cloudName: "weab7mds",
+  uploadPreset: "store_uploads"
+};

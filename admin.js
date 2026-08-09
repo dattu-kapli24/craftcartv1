@@ -117,16 +117,18 @@ document.getElementById('addProductBtn').onclick = () => {
   renderProducts();
 };
 
-window.uploadImage = async (index, file) => {
+async function uploadImage(index, file) {
   if (!file) return;
-  showToast('Uploading...');
-  const res = await uploadImageToFirebase(storeId, file);
-  if (res.url) {
-    currentConfig.products[index].image = res.url;
-    document.getElementById(`prev-${index}`).src = res.url;
-    showToast('Uploaded!');
+  showToast('Uploading to Cloudinary...');
+  const result = await uploadImageToCloud(file);
+  if (result.url) {
+    currentConfig.products[index].image = result.url;
+    document.getElementById(`prev-${index}`).src = result.url;
+    showToast('Image uploaded successfully');
+  } else {
+    showToast('Upload failed: ' + (result.error || 'Unknown error'));
   }
-};
+}
 
 document.getElementById('adminForm').onsubmit = async (e) => {
   e.preventDefault();
