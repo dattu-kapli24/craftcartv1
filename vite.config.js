@@ -14,6 +14,9 @@ function copyStatic() {
     writeBundle() {
       copyFileSync("store-config.js", "dist/store-config.js");
       copyFileSync("app.js", "dist/app.js");
+      copyFileSync("admin.html", "dist/admin.html");
+      copyFileSync("admin.js", "dist/admin.js");
+      copyFileSync("admin.css", "dist/admin.css");
       if (existsSync("products")) cpSync("products", "dist/products", { recursive: true });
       if (!existsSync("dist/assets")) mkdirSync("dist/assets", { recursive: true });
     },
