@@ -1,17 +1,18 @@
-/* =============================================================
- *  app.js — Core logic for the WhatsApp E-Commerce Store.
- *  Reads STORE_CONFIG, renders UI, manages cart in localStorage,
- *  and builds the WhatsApp checkout link.
- *  Pure vanilla JS. No frameworks, no build step.
- * ============================================================= */
+import { getStoreConfig } from "./firebase-service.js";
 
-(function () {
+(async function () {
   "use strict";
 
   /* ---------- 1. Read config ---------- */
-  const CFG = window.STORE_CONFIG;
+  let CFG = await getStoreConfig();
+
+  // Fallback to local config if firebase is empty (migration path)
   if (!CFG) {
-    document.body.innerHTML = "<p style='padding:2rem;font-family:sans-serif'>Missing <code>store-config.js</code>.</p>";
+    CFG = window.STORE_CONFIG;
+  }
+
+  if (!CFG) {
+    document.body.innerHTML = "<p style='padding:2rem;font-family:sans-serif'>Waiting for store configuration...</p>";
     return;
   }
 

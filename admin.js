@@ -1,9 +1,21 @@
+import { getStoreConfig, saveStoreConfig, uploadImageToFirebase } from "./firebase-service.js";
+
 let currentConfig = null;
 
 async function fetchConfig() {
-  const res = await fetch('/api/config');
-  currentConfig = await res.json();
-  renderForm();
+  showToast('Fetching configuration...');
+  currentConfig = await getStoreConfig();
+
+  if (!currentConfig && window.STORE_CONFIG) {
+    showToast('Cloud is empty. Ready to sync local config.');
+    currentConfig = JSON.parse(JSON.stringify(window.STORE_CONFIG));
+  }
+
+  if (currentConfig) {
+    renderForm();
+  } else {
+    showToast('Error: No configuration found.');
+  }
 }
 
 function renderForm() {
@@ -18,16 +30,16 @@ function renderForm() {
   document.getElementById('accentColorDark').value = currentConfig.store.accentColorDark;
 
   // Real-time logo update
-  document.getElementById('name').addEventListener('input', (e) => {
-    const brandLogo = document.getElementById('brandLogo');
-    if (brandLogo) brandLogo.textContent = e.target.value.charAt(0).toUpperCase() || 'A';
-  });
-
-  // Update logo initial
+  const nameInput = document.getElementById('name');
   const brandLogo = document.getElementById('brandLogo');
+
   if (brandLogo && currentConfig.store.name) {
     brandLogo.textContent = currentConfig.store.name.charAt(0).toUpperCase();
   }
+
+  nameInput.addEventListener('input', (e) => {
+    if (brandLogo) brandLogo.textContent = e.target.value.charAt(0).toUpperCase() || 'A';
+  });
 
   // Set CSS variables for accent colors in admin view
   document.documentElement.style.setProperty('--accent', currentConfig.store.accentColor);
@@ -48,9 +60,17 @@ function renderCategories() {
     tag.className = 'tag';
     tag.innerHTML = `
       <span>${cat}</span>
-      <button type="button" onclick="removeCategory(${index})">&times;</button>
+      <button type="button" class="remove-cat-btn" data-index="${index}">&times;</button>
     `;
     list.appendChild(tag);
+  });
+
+  // Re-attach event listeners
+  list.querySelectorAll('.remove-cat-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(e.target.dataset.index);
+      removeCategory(idx);
+    });
   });
 }
 
@@ -79,38 +99,46 @@ function renderProducts() {
     const div = document.createElement('div');
     div.className = 'product-item';
     div.innerHTML = `
-      <button type="button" class="remove-product" onclick="removeProduct(${index})">Remove</button>
+      <button type="button" class="remove-product remove-prod-btn" data-index="${index}">Remove</button>
       <div class="form-row">
         <div class="form-group">
           <label>Name</label>
-          <input type="text" value="${prod.name}" onchange="updateProduct(${index}, 'name', this.value)">
+          <input type="text" value="${prod.name}" class="prod-name" data-index="${index}">
         </div>
         <div class="form-group">
           <label>Price</label>
-          <input type="number" value="${prod.price}" onchange="updateProduct(${index}, 'price', parseFloat(this.value))">
+          <input type="number" value="${prod.price}" class="prod-price" data-index="${index}">
         </div>
       </div>
       <div class="form-group">
         <label>Category</label>
-        <select onchange="updateProduct(${index}, 'category', this.value)">
+        <select class="prod-cat" data-index="${index}">
           ${currentConfig.categories.map(cat => `<option value="${cat}" ${prod.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
         </select>
       </div>
       <div class="form-group">
         <label>Description</label>
-        <textarea onchange="updateProduct(${index}, 'description', this.value)">${prod.description}</textarea>
+        <textarea class="prod-desc" data-index="${index}">${prod.description}</textarea>
       </div>
       <div class="form-group">
         <label>Image</label>
         <div style="display: flex; gap: 10px; align-items: center;">
           <img src="${prod.image}" class="product-preview-img" id="prev-${index}">
-          <input type="file" accept="image/*" onchange="uploadImage(${index}, this.files[0])">
+          <input type="file" accept="image/*" class="prod-upload" data-index="${index}">
           <input type="text" value="${prod.image}" readonly style="flex: 1; font-size: 0.8rem; background: #f8fafc;">
         </div>
       </div>
     `;
     list.appendChild(div);
   });
+
+  // Attach event listeners for dynamic fields
+  list.querySelectorAll('.prod-name').forEach(el => el.addEventListener('change', e => updateProduct(e.target.dataset.index, 'name', e.target.value)));
+  list.querySelectorAll('.prod-price').forEach(el => el.addEventListener('change', e => updateProduct(e.target.dataset.index, 'price', parseFloat(e.target.value))));
+  list.querySelectorAll('.prod-cat').forEach(el => el.addEventListener('change', e => updateProduct(e.target.dataset.index, 'category', e.target.value)));
+  list.querySelectorAll('.prod-desc').forEach(el => el.addEventListener('change', e => updateProduct(e.target.dataset.index, 'description', e.target.value)));
+  list.querySelectorAll('.prod-upload').forEach(el => el.addEventListener('change', e => uploadImage(e.target.dataset.index, e.target.files[0])));
+  list.querySelectorAll('.remove-prod-btn').forEach(el => el.addEventListener('click', e => removeProduct(e.target.dataset.index)));
 }
 
 function updateProduct(index, field, value) {
@@ -142,22 +170,15 @@ document.getElementById('addProductBtn').addEventListener('click', () => {
 async function uploadImage(index, file) {
   if (!file) return;
 
-  const formData = new FormData();
-  formData.append('image', file);
+  showToast('Uploading image to cloud...');
+  const result = await uploadImageToFirebase(file);
 
-  showToast('Uploading image...');
-  const res = await fetch('/api/upload', {
-    method: 'POST',
-    body: formData
-  });
-  const data = await res.json();
-
-  if (data.url) {
-    currentConfig.products[index].image = data.url;
-    document.getElementById(`prev-${index}`).src = data.url;
+  if (result.url) {
+    currentConfig.products[index].image = result.url;
+    document.getElementById(`prev-${index}`).src = result.url;
     showToast('Image uploaded successfully');
   } else {
-    showToast('Upload failed: ' + (data.error || 'Unknown error'));
+    showToast('Upload failed: ' + (result.error || 'Unknown error'));
   }
 }
 
@@ -172,18 +193,27 @@ document.getElementById('adminForm').addEventListener('submit', async (e) => {
   currentConfig.store.accentColor = document.getElementById('accentColor').value;
   currentConfig.store.accentColorDark = document.getElementById('accentColorDark').value;
 
-  showToast('Saving changes...');
-  const res = await fetch('/api/save', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(currentConfig)
-  });
+  showToast('Saving to cloud...');
+  const result = await saveStoreConfig(currentConfig);
 
-  const data = await res.json();
-  if (data.success) {
-    showToast('Store configuration updated!');
+  if (result.success) {
+    showToast('Store configuration saved to Cloud!');
   } else {
-    showToast('Error saving: ' + (data.error || 'Unknown error'));
+    showToast('Error saving: ' + result.error);
+  }
+});
+
+document.getElementById('migrateBtn').addEventListener('click', async () => {
+  if (confirm('This will overwrite cloud settings with your local file settings. Proceed?')) {
+    showToast('Syncing...');
+    currentConfig = JSON.parse(JSON.stringify(window.STORE_CONFIG));
+    const result = await saveStoreConfig(currentConfig);
+    if (result.success) {
+      renderForm();
+      showToast('Local config successfully synced to Cloud!');
+    } else {
+      showToast('Sync failed: ' + result.error);
+    }
   }
 });
 
@@ -193,18 +223,14 @@ function showToast(msg) {
   toast.textContent = msg;
   toast.hidden = false;
 
-  // Clear any existing timer to prevent premature hiding
   clearTimeout(toastTimer);
 
-  // Use requestAnimationFrame to ensure the hidden=false is processed
   requestAnimationFrame(() => {
     toast.classList.add('toast--show');
   });
 
-  // Keep the toast visible for 4 seconds for better readability
   toastTimer = setTimeout(() => {
     toast.classList.remove('toast--show');
-    // Wait for the CSS transition (0.25s) to finish before hiding the element
     setTimeout(() => {
       if (!toast.classList.contains('toast--show')) {
         toast.hidden = true;
