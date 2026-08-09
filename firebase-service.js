@@ -67,14 +67,24 @@ export async function getStoreData(storeId) {
 export async function saveStoreConfig(storeId, config) {
   try {
     const { products, ...branding } = config;
+    const currentUser = auth.currentUser;
 
-    // Save Branding
-    await setDoc(doc(db, "stores", storeId), branding.store ? { ...branding.store, categories: branding.categories } : branding);
+    // Save Branding with ownerId for security
+    const storeData = branding.store ? { ...branding.store, categories: branding.categories } : branding;
+    if (currentUser) {
+      storeData.ownerId = currentUser.uid;
+    }
 
-    // Save Products individually (Multi-tenant style)
+    await setDoc(doc(db, "stores", storeId), storeData, { merge: true });
+
+    // Save Products individually
     for (const prod of products) {
       const prodRef = doc(collection(db, "products"), prod.id.startsWith('new-') ? undefined : prod.id);
-      await setDoc(prodRef, { ...prod, storeId: storeId }, { merge: true });
+      const prodData = { ...prod, storeId: storeId };
+      if (currentUser) {
+        prodData.ownerId = currentUser.uid;
+      }
+      await setDoc(prodRef, prodData, { merge: true });
     }
 
     return { success: true };
