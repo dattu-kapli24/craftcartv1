@@ -1,14 +1,29 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 import { firebaseConfig } from "./firebase-config.js";
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
+const auth = getAuth(app);
 
-const CONFIG_DOC_ID = "main_config";
-const CONFIG_COLLECTION = "store_settings";
+// Use a dynamic store ID. Defaulting to 'shridevi-resinart'
+const STORE_ID = window.STORE_ID || "shridevi-resinart";
+const CONFIG_DOC_ID = "config";
+const CONFIG_COLLECTION = `stores/${STORE_ID}/settings`;
+
+export { auth, onAuthStateChanged, signOut };
+
+export async function loginAdmin(email, password) {
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
 
 export async function getStoreConfig() {
   try {
@@ -37,7 +52,7 @@ export async function saveStoreConfig(config) {
 
 export async function uploadImageToFirebase(file) {
   try {
-    const storageRef = ref(storage, `products/${Date.now()}-${file.name}`);
+    const storageRef = ref(storage, `stores/${STORE_ID}/products/${Date.now()}-${file.name}`);
     await uploadBytes(storageRef, file);
     const url = await getDownloadURL(storageRef);
     return { url };

@@ -17,6 +17,10 @@ function copyStatic() {
       copyFileSync("admin.html", "dist/admin.html");
       copyFileSync("admin.js", "dist/admin.js");
       copyFileSync("admin.css", "dist/admin.css");
+      copyFileSync("login.html", "dist/login.html");
+      copyFileSync("login.js", "dist/login.js");
+      copyFileSync("firebase-service.js", "dist/firebase-service.js");
+      copyFileSync("firebase-config.js", "dist/firebase-config.js");
       if (existsSync("products")) cpSync("products", "dist/products", { recursive: true });
       if (!existsSync("dist/assets")) mkdirSync("dist/assets", { recursive: true });
     },

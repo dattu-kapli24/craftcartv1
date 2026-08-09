@@ -1,6 +1,14 @@
-import { getStoreConfig, saveStoreConfig, uploadImageToFirebase } from "./firebase-service.js";
+import { getStoreConfig, saveStoreConfig, uploadImageToFirebase, onAuthStateChanged, signOut } from "./firebase-service.js";
 
-let currentConfig = null;
+// Check authentication status immediately
+onAuthStateChanged((user) => {
+  if (!user) {
+    window.location.href = '/login.html';
+  } else {
+    // Remove the automatic call to fetchConfig() at the end
+// fetchConfig();
+  }
+});
 
 async function fetchConfig() {
   showToast('Fetching configuration...');
@@ -239,4 +247,5 @@ function showToast(msg) {
   }, 4000);
 }
 
-fetchConfig();
+// Remove the automatic call to fetchConfig() at the end
+// fetchConfig();
