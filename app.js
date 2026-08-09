@@ -1,33 +1,30 @@
-import { getStoreConfig } from "./firebase-service.js";
+import { getStoreData, getStoreIdFromUrl } from "./firebase-service.js";
 
 (async function () {
   "use strict";
 
-  /* ---------- 1. Read config ---------- */
-  let CFG = null;
+  const storeId = getStoreIdFromUrl();
+  console.log(`Loading store: ${storeId}`);
 
-  try {
-    CFG = await getStoreConfig();
-  } catch (err) {
-    console.error("Firebase fetch failed:", err);
-  }
-
-  // Fallback to local config if firebase is empty (migration path)
-  if (!CFG) {
-    CFG = window.STORE_CONFIG;
-  }
+  /* ---------- 1. Fetch Dynamic Config ---------- */
+  let CFG = await getStoreData(storeId);
 
   if (!CFG) {
-    document.body.innerHTML = "<p style='padding:2rem;font-family:sans-serif'>Waiting for store configuration... <br><small>If you are the owner, please go to /admin and Sync to Cloud.</small></p>";
+    document.body.innerHTML = `
+      <div style="padding:4rem; text-align:center; font-family:sans-serif;">
+        <h1>Store Not Found</h1>
+        <p>The store "<strong>${storeId}</strong>" does not exist or has not been configured yet.</p>
+        <a href="/" style="color:blue">Back to Home</a>
+      </div>`;
     return;
   }
 
   const { store, categories, products } = CFG;
   const CURRENCY = store.currencySymbol || "₹";
-  const STORAGE_KEY = "wa_store_cart_v1";
+  const STORAGE_KEY = `cart_${storeId}`;
 
   /* ---------- 2. App state ---------- */
-  let cart = loadCart();          // [{id, qty}]
+  let cart = loadCart();
   let activeCategory = categories[0] || "All";
   let searchQuery = "";
 
@@ -77,9 +74,7 @@ import { getStoreConfig } from "./firebase-service.js";
     return products.find((p) => p.id === id);
   }
   function resolveProductImage(p) {
-    if (p.image && p.image.startsWith("/")) return p.image;
-    if (p.image) return p.image;
-    return `/products/${encodeURIComponent(p.id)}.jpeg`;
+    return p.image || "/products/placeholder.jpg";
   }
   function cartQty() {
     return cart.reduce((s, i) => s + i.qty, 0);
@@ -111,12 +106,15 @@ import { getStoreConfig } from "./firebase-service.js";
   /* ---------- 6. Apply branding ---------- */
   function applyBranding() {
     storeNameEl.textContent = store.name;
-    storeTaglineEl.textContent = store.tagline;
+    storeTaglineEl.textContent = store.tagline || "";
     footerNameEl.textContent = store.name;
     brandLogo.textContent = store.name.charAt(0).toUpperCase();
+
+    // DYNAMIC COLORS
     document.documentElement.style.setProperty("--accent", store.accentColor);
     document.documentElement.style.setProperty("--accent-dark", store.accentColorDark || store.accentColor);
-    document.title = store.name + " — Shop via WhatsApp";
+
+    document.title = `${store.name} — Catalog`;
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     if (metaTheme) metaTheme.setAttribute("content", store.accentColor);
   }
@@ -144,8 +142,7 @@ import { getStoreConfig } from "./firebase-service.js";
       const inCat = activeCategory === "All" || p.category === activeCategory;
       const inSearch = !q ||
         p.name.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q);
+        (p.description && p.description.toLowerCase().includes(q));
       return inCat && inSearch;
     });
   }
@@ -198,7 +195,7 @@ import { getStoreConfig } from "./firebase-service.js";
 
       const desc = document.createElement("p");
       desc.className = "card__desc";
-      desc.textContent = p.description;
+      desc.textContent = p.description || "";
 
       const priceRow = document.createElement("div");
       priceRow.className = "card__price";
@@ -302,7 +299,6 @@ import { getStoreConfig } from "./firebase-service.js";
       const minus = document.createElement("button");
       minus.className = "qty__btn";
       minus.textContent = "−";
-      minus.setAttribute("aria-label", "Decrease quantity");
       minus.addEventListener("click", () => changeQty(i.id, -1));
       const num = document.createElement("span");
       num.className = "qty__num";
@@ -310,7 +306,6 @@ import { getStoreConfig } from "./firebase-service.js";
       const plus = document.createElement("button");
       plus.className = "qty__btn";
       plus.textContent = "+";
-      plus.setAttribute("aria-label", "Increase quantity");
       plus.addEventListener("click", () => changeQty(i.id, 1));
       qty.append(minus, num, plus);
 
@@ -321,7 +316,6 @@ import { getStoreConfig } from "./firebase-service.js";
       const remove = document.createElement("button");
       remove.className = "cart-item__remove";
       remove.textContent = "Remove";
-      remove.setAttribute("aria-label", "Remove " + p.name);
       remove.addEventListener("click", () => removeItem(i.id));
 
       info.append(name, sub, qty);
@@ -337,17 +331,15 @@ import { getStoreConfig } from "./firebase-service.js";
     renderCart();
     overlay.hidden = false;
     cartPanel.classList.add("cart--open");
-    cartPanel.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
   }
   function closeCart() {
     overlay.hidden = true;
     cartPanel.classList.remove("cart--open");
-    cartPanel.setAttribute("aria-hidden", "true");
     document.body.style.overflow = "";
   }
 
-  /* ---------- 12. WhatsApp checkout ---------- */
+  /* ---------- 12. Dynamic WhatsApp checkout ---------- */
   function placeOrder(e) {
     e.preventDefault();
     if (!cart.length) { showToast("Your cart is empty"); return; }
@@ -359,17 +351,16 @@ import { getStoreConfig } from "./firebase-service.js";
     const notes = custNotes.value.trim();
 
     if (!name || !phone || !address || !pin) {
-      showToast("Please fill all required details");
+      showToast("Please fill required fields");
       return;
     }
 
     const lines = cart.map((i) => {
       const p = findProduct(i.id);
-      const sub = p.price * i.qty;
-      return `- ${p.name} x ${i.qty} = ${money(sub)}`;
+      return `- ${p.name} x ${i.qty} = ${money(p.price * i.qty)}`;
     });
 
-    let text =
+    const text =
       `Hello ${store.name}, I would like to place an order:\n` +
       `--------------------------\n` +
       lines.join("\n") + "\n" +
@@ -379,41 +370,24 @@ import { getStoreConfig } from "./firebase-service.js";
       `Name: ${name}\n` +
       `Phone: ${phone}\n` +
       `Address: ${address}\n` +
-      `Pincode: ${pin}`;
-
-    if (notes) {
-      text += `\nNotes: ${notes}`;
-    }
+      `Pincode: ${pin}` +
+      (notes ? `\nNotes: ${notes}` : "");
 
     const url = `https://wa.me/${store.whatsappNumber}?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank", "noopener");
   }
 
-  /* ---------- 13. Search ---------- */
-  let searchTimer;
+  /* ---------- 13. Events ---------- */
   searchInput.addEventListener("input", () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      searchQuery = searchInput.value;
-      renderGrid();
-    }, 120);
+    searchQuery = searchInput.value;
+    renderGrid();
   });
-
-  /* ---------- 14. Sticky header shadow on scroll ---------- */
-  window.addEventListener("scroll", () => {
-    header.classList.toggle("header--scrolled", window.scrollY > 8);
-  }, { passive: true });
-
-  /* ---------- 15. Wire up events ---------- */
   cartBtn.addEventListener("click", openCart);
   cartClose.addEventListener("click", closeCart);
   overlay.addEventListener("click", closeCart);
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeCart();
-  });
   checkoutForm.addEventListener("submit", placeOrder);
 
-  /* ---------- 16. Init ---------- */
+  /* ---------- 14. Init ---------- */
   applyBranding();
   renderPills();
   renderGrid();
