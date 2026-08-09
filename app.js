@@ -46,8 +46,10 @@
   const cartTotalEl = $("cartTotal");
   const checkoutForm = $("checkoutForm");
   const custName = $("custName");
+  const custPhone = $("custPhone");
   const custAddress = $("custAddress");
   const custPin = $("custPin");
+  const custNotes = $("custNotes");
   const placeOrderBtn = $("placeOrderBtn");
   const toast = $("toast");
   const header = $("header");
@@ -344,11 +346,13 @@
     if (!cart.length) { showToast("Your cart is empty"); return; }
 
     const name = custName.value.trim();
+    const phone = custPhone.value.trim();
     const address = custAddress.value.trim();
     const pin = custPin.value.trim();
+    const notes = custNotes.value.trim();
 
-    if (!name || !address || !pin) {
-      showToast("Please fill all delivery details");
+    if (!name || !phone || !address || !pin) {
+      showToast("Please fill all required details");
       return;
     }
 
@@ -358,7 +362,7 @@
       return `- ${p.name} x ${i.qty} = ${money(sub)}`;
     });
 
-    const text =
+    let text =
       `Hello ${store.name}, I would like to place an order:\n` +
       `--------------------------\n` +
       lines.join("\n") + "\n" +
@@ -366,8 +370,13 @@
       `Total Amount: ${money(cartTotal())}\n` +
       `Delivery Details:\n` +
       `Name: ${name}\n` +
+      `Phone: ${phone}\n` +
       `Address: ${address}\n` +
       `Pincode: ${pin}`;
+
+    if (notes) {
+      text += `\nNotes: ${notes}`;
+    }
 
     const url = `https://wa.me/${store.whatsappNumber}?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank", "noopener");
