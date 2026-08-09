@@ -1,17 +1,24 @@
-/* =============================================================
- *  app.js — Core logic for the WhatsApp E-Commerce Store.
- *  Reads STORE_CONFIG, renders UI, manages cart in localStorage,
- *  and builds the WhatsApp checkout link.
- *  Pure vanilla JS. No frameworks, no build step.
- * ============================================================= */
+import { getStoreConfig } from "./firebase-service.js";
 
-(function () {
+(async function () {
   "use strict";
 
   /* ---------- 1. Read config ---------- */
-  const CFG = window.STORE_CONFIG;
+  let CFG = null;
+
+  try {
+    CFG = await getStoreConfig();
+  } catch (err) {
+    console.error("Firebase fetch failed:", err);
+  }
+
+  // Fallback to local config if firebase is empty (migration path)
   if (!CFG) {
-    document.body.innerHTML = "<p style='padding:2rem;font-family:sans-serif'>Missing <code>store-config.js</code>.</p>";
+    CFG = window.STORE_CONFIG;
+  }
+
+  if (!CFG) {
+    document.body.innerHTML = "<p style='padding:2rem;font-family:sans-serif'>Waiting for store configuration... <br><small>If you are the owner, please go to /admin and Sync to Cloud.</small></p>";
     return;
   }
 
@@ -46,8 +53,10 @@
   const cartTotalEl = $("cartTotal");
   const checkoutForm = $("checkoutForm");
   const custName = $("custName");
+  const custPhone = $("custPhone");
   const custAddress = $("custAddress");
   const custPin = $("custPin");
+  const custNotes = $("custNotes");
   const placeOrderBtn = $("placeOrderBtn");
   const toast = $("toast");
   const header = $("header");
@@ -344,11 +353,13 @@
     if (!cart.length) { showToast("Your cart is empty"); return; }
 
     const name = custName.value.trim();
+    const phone = custPhone.value.trim();
     const address = custAddress.value.trim();
     const pin = custPin.value.trim();
+    const notes = custNotes.value.trim();
 
-    if (!name || !address || !pin) {
-      showToast("Please fill all delivery details");
+    if (!name || !phone || !address || !pin) {
+      showToast("Please fill all required details");
       return;
     }
 
@@ -358,7 +369,7 @@
       return `- ${p.name} x ${i.qty} = ${money(sub)}`;
     });
 
-    const text =
+    let text =
       `Hello ${store.name}, I would like to place an order:\n` +
       `--------------------------\n` +
       lines.join("\n") + "\n" +
@@ -366,8 +377,13 @@
       `Total Amount: ${money(cartTotal())}\n` +
       `Delivery Details:\n` +
       `Name: ${name}\n` +
+      `Phone: ${phone}\n` +
       `Address: ${address}\n` +
       `Pincode: ${pin}`;
+
+    if (notes) {
+      text += `\nNotes: ${notes}`;
+    }
 
     const url = `https://wa.me/${store.whatsappNumber}?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank", "noopener");

@@ -17,9 +17,14 @@
           <p class="brand__tagline">Manage your store configuration</p>
         </div>
       </div>
-      <a href="/" class="cart-btn" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 8px;">
-        <span>View Store</span>
-      </a>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <a href="/" class="cart-btn" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 8px; width: auto; padding: 0 16px;">
+          <span>View Store</span>
+        </a>
+        <button type="button" id="logoutBtn" class="cart-btn" style="width: auto; padding: 0 16px; background: #fee2e2; color: #ef4444;">
+          Logout
+        </button>
+      </div>
     </div>
   </header>
 
@@ -77,8 +82,9 @@
         <button type="button" id="addProductBtn" class="btn-secondary" style="margin-top: 20px; width: 100%;">+ Add New Product</button>
       </section>
 
-      <div class="admin-actions">
-        <button type="submit" class="btn-whatsapp">Save All Changes</button>
+      <div class="admin-actions" style="flex-direction: column; gap: 10px;">
+        <button type="submit" class="btn-whatsapp">Save All Changes to Cloud</button>
+        <button type="button" id="migrateBtn" class="btn-secondary" style="background: #e2e8f0;">Sync Local Config to Cloud</button>
       </div>
     </form>
   </main>
@@ -86,6 +92,7 @@
   <!-- Toast for feedback -->
   <div id="toast" class="toast" hidden></div>
 
-  <script src="admin.js"></script>
+  <script src="store-config.js"></script>
+  <script type="module" src="admin.js"></script>
 </body>
 </html>

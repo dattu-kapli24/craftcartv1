@@ -13,7 +13,6 @@ function copyStatic() {
     name: "copy-static-assets",
     writeBundle() {
       copyFileSync("store-config.js", "dist/store-config.js");
-      copyFileSync("app.js", "dist/app.js");
       if (existsSync("products")) cpSync("products", "dist/products", { recursive: true });
       if (!existsSync("dist/assets")) mkdirSync("dist/assets", { recursive: true });
     },
@@ -130,6 +129,15 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     allowedHosts: true,
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+        admin: path.resolve(__dirname, "admin.html"),
+        login: path.resolve(__dirname, "login.html"),
+      },
+    },
   },
   plugins: [copyStatic(), adminApi()],
 });
