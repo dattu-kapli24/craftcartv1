@@ -15,7 +15,7 @@ export function getStoreIdFromUrl() {
   return params.get('store') || 'demo'; // Fallback to 'demo' store
 }
 
-export { auth, onAuthChange, logoutAdmin };
+export { auth };
 
 export function onAuthChange(callback) {
   onAuthStateChanged(auth, callback);

@@ -12,7 +12,6 @@ function copyStatic() {
   return {
     name: "copy-static-assets",
     writeBundle() {
-      copyFileSync("store-config.js", "dist/store-config.js");
       if (existsSync("products")) cpSync("products", "dist/products", { recursive: true });
       if (!existsSync("dist/assets")) mkdirSync("dist/assets", { recursive: true });
     },
@@ -50,7 +49,7 @@ function adminApi() {
       // GET current config
       server.middlewares.use("/api/config", (req, res) => {
         try {
-          const content = readFileSync("store-config.js", "utf-8");
+          const content = readFileSync("public/store-config.js", "utf-8");
           // Extract the object from window.STORE_CONFIG = { ... };
           const match = content.match(/window\.STORE_CONFIG\s*=\s*([\s\S]*?);/);
           if (match) {
@@ -94,7 +93,7 @@ function adminApi() {
 window.STORE_CONFIG = `;
 
             const content = header + JSON.stringify(newConfig, null, 2) + ";\n";
-            writeFileSync("store-config.js", content);
+            writeFileSync("public/store-config.js", content);
             res.end(JSON.stringify({ success: true }));
           } catch (e) {
             res.statusCode = 500;
