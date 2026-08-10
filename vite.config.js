@@ -36,10 +36,11 @@ function adminApi() {
       });
       const upload = multer({ storage });
 
-      // Redirect /admin to /admin.html
+      // Redirect /admin to /admin.html while preserving query parameters
       server.middlewares.use((req, res, next) => {
-        if (req.url === "/admin" || req.url === "/admin/") {
-          res.writeHead(302, { Location: "/admin.html" });
+        const url = new URL(req.url, `http://${req.headers.host}`);
+        if (url.pathname === "/admin" || url.pathname === "/admin/") {
+          res.writeHead(302, { Location: "/admin.html" + url.search });
           res.end();
         } else {
           next();

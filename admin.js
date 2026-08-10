@@ -5,18 +5,15 @@ let storeId = getStoreIdFromUrl();
 
 console.log(`Admin Dashboard Initialized. Current storeId from URL: ${storeId}`);
 
+// 1. AUTHENTICATION & AUTO-DISCOVERY
 onAuthChange(async (user) => {
   if (!user) {
     window.location.href = `/login.html?store=${storeId}`;
   } else {
-    // AUTO-STORE DISCOVERY
-    // If no storeId in URL or it's 'demo', try to find the store owned by this user
     if (!storeId || storeId === 'demo') {
       const discoveredId = await findStoreByOwner(user.uid);
       if (discoveredId) {
         storeId = discoveredId;
-        console.log(`Auto-discovered store for user: ${storeId}`);
-        // Optional: Update URL without refreshing to keep it clean
         const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + `?store=${storeId}`;
         window.history.pushState({path:newUrl},'',newUrl);
       }
@@ -25,6 +22,7 @@ onAuthChange(async (user) => {
   }
 });
 
+// 2. FETCH DATA
 async function fetchConfig() {
   showToast('Fetching configuration...');
   currentConfig = await getStoreData(storeId);
@@ -41,6 +39,7 @@ async function fetchConfig() {
   renderForm();
 }
 
+// 3. RENDER UI
 function renderForm() {
   if (!currentConfig) return;
 
@@ -69,6 +68,7 @@ function renderCategories() {
   });
 }
 
+// 4. CRUD OPERATIONS
 window.removeCategory = (index) => {
   currentConfig.categories.splice(index, 1);
   renderCategories();
@@ -143,12 +143,42 @@ window.uploadImage = async (index, file) => {
   }
 };
 
+// 5. CLOUD ACTIONS
 document.getElementById('adminForm').onsubmit = async (e) => {
   e.preventDefault();
-  showToast('Saving...');
+
+  // Update store branding from form
+  currentConfig.store.name = document.getElementById('name').value;
+  currentConfig.store.tagline = document.getElementById('tagline').value;
+  currentConfig.store.whatsappNumber = document.getElementById('whatsappNumber').value;
+  currentConfig.store.currencySymbol = document.getElementById('currencySymbol').value;
+  currentConfig.store.accentColor = document.getElementById('accentColor').value;
+  currentConfig.store.accentColorDark = document.getElementById('accentColorDark').value;
+
+  showToast('Saving to cloud...');
   const res = await saveStoreConfig(storeId, currentConfig);
   if (res.success) showToast('Saved Successfully!');
   else showToast('Error: ' + res.error);
+};
+
+// RESTORED: Migration Logic
+document.getElementById('migrateBtn').onclick = async () => {
+  if (!window.STORE_CONFIG) {
+    showToast('Error: Local config template not found.');
+    return;
+  }
+
+  if (confirm('Overwrite cloud settings with local template? This will reset your products to the default list.')) {
+    showToast('Migrating local data...');
+    currentConfig = JSON.parse(JSON.stringify(window.STORE_CONFIG));
+    const res = await saveStoreConfig(storeId, currentConfig);
+    if (res.success) {
+      renderForm();
+      showToast('Successfully synced local data to Cloud!');
+    } else {
+      showToast('Sync failed: ' + res.error);
+    }
+  }
 };
 
 document.getElementById('logoutBtn').onclick = async () => {
