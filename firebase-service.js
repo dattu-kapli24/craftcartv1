@@ -9,10 +9,20 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 const auth = getAuth(app);
 
-// Helper to get Store ID from URL query param (?store=name)
+// Helper to get Store ID from URL path (e.g., orderspot.in/bakerscart)
 export function getStoreIdFromUrl() {
+  const path = window.location.pathname.split('/').filter(p => p !== "");
+
+  // Reserved paths that are NOT store names
+  const reserved = ["admin", "login", "admin.html", "login.html", "index.html"];
+
+  // If the first segment is a store ID, return it. Otherwise check query param as fallback.
+  if (path[0] && !reserved.includes(path[0].toLowerCase())) {
+    return path[0];
+  }
+
   const params = new URLSearchParams(window.location.search);
-  return params.get('store') || 'demo'; // Fallback to 'demo' store
+  return params.get('store') || 'demo';
 }
 
 export { auth };

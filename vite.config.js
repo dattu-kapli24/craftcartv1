@@ -39,8 +39,13 @@ function adminApi() {
       // Redirect /admin to /admin.html while preserving query parameters
       server.middlewares.use((req, res, next) => {
         const url = new URL(req.url, `http://${req.headers.host}`);
-        if (url.pathname === "/admin" || url.pathname === "/admin/") {
+        const pathname = url.pathname.toLowerCase();
+
+        if (pathname === "/admin" || pathname === "/admin/") {
           res.writeHead(302, { Location: "/admin.html" + url.search });
+          res.end();
+        } else if (pathname === "/login" || pathname === "/login/") {
+          res.writeHead(302, { Location: "/login.html" + url.search });
           res.end();
         } else {
           next();
