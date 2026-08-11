@@ -12,7 +12,7 @@ import { getStoreData, getStoreIdFromUrl } from "./firebase-service.js";
   if (!CFG) {
     document.body.innerHTML = `
       <div style="padding:4rem; text-align:center; font-family:sans-serif;">
-        <h1>Store Not Found</h1>
+        <h1>OrderSpot — Store Not Found</h1>
         <p>The store "<strong>${storeId}</strong>" does not exist or has not been configured yet.</p>
         <a href="/" style="color:blue">Back to Home</a>
       </div>`;
@@ -114,7 +114,7 @@ import { getStoreData, getStoreIdFromUrl } from "./firebase-service.js";
     document.documentElement.style.setProperty("--accent", store.accentColor);
     document.documentElement.style.setProperty("--accent-dark", store.accentColorDark || store.accentColor);
 
-    document.title = `${store.name} — Catalog`;
+    document.title = `${store.name} — OrderSpot Catalog`;
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     if (metaTheme) metaTheme.setAttribute("content", store.accentColor);
   }

@@ -70,7 +70,15 @@ export async function getStoreData(storeId) {
     const storeConfig = storeSnap.data();
 
     // 2. Get Store Products
-    const q = query(collection(db, "products"), where("storeId", "==", storeId));
+    let q;
+    if (storeId === 'demo') {
+      // Marketplace Mode: Home page shows products from all stores
+      q = query(collection(db, "products"));
+    } else {
+      // Tenant Mode: Show only this store's products
+      q = query(collection(db, "products"), where("storeId", "==", storeId));
+    }
+
     const querySnapshot = await getDocs(q);
     const products = [];
     querySnapshot.forEach((doc) => {

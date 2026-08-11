@@ -303,6 +303,7 @@ input, textarea { font-family: inherit; font-size: 1rem; }
 }
 .footer p:first-child { font-weight: 600; color: var(--text); margin-bottom: 2px; }
 .footer__sub { font-size: var(--fs-sm); }
+.footer__powered { font-size: 0.75rem; margin-top: 12px; opacity: 0.7; }
 
 /* ---------- Cart slide-over ---------- */
 .overlay {

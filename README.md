@@ -1,3 +1,3 @@
-# craftcartv1
+# OrderSpot
 
-Baker's Classic Cakes - A WhatsApp-powered E-commerce Store.
+Professional WhatsApp-powered E-commerce Platform.
