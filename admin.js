@@ -183,15 +183,29 @@ async function uploadImage(index, file) {
   }
 }
 
+import { STORE_BLUEPRINTS } from "./blueprints.js";
+
 $('sidebarCreateBtn').onclick = $('mainCreateBtn').onclick = () => {
   const id = prompt("Enter a unique ID for your new store (e.g. fashion-hub):");
-  if (id) {
-    const cleanId = id.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const newUrl = `${window.location.pathname}?store=${cleanId}`;
-    window.history.pushState({path:newUrl},'',newUrl);
-    currentStoreId = cleanId;
-    fetchConfig(cleanId);
-  }
+  if (!id) return;
+
+  const cleanId = id.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const templateType = prompt("Choose a template (type: gifting, crochet, or bakers):", "gifting");
+
+  const blueprint = STORE_BLUEPRINTS[templateType.toLowerCase()] || STORE_BLUEPRINTS['gifting'];
+
+  // Clone the blueprint as the initial config
+  currentConfig = JSON.parse(JSON.stringify(blueprint));
+  currentStoreId = cleanId;
+
+  // Update URL without reload
+  const newUrl = `${window.location.pathname}?store=${cleanId}`;
+  window.history.pushState({path:newUrl},'',newUrl);
+
+  showToast(`Created store using "${templateType}" template!`);
+  renderForm();
+  adminForm.hidden = false;
+  welcomeState.hidden = true;
 };
 
 adminForm.onsubmit = async (e) => {
