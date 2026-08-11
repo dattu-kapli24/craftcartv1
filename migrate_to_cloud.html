@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Cloud Migration Tool — OrderSpot</title>
+  <title>Home Page Migration Tool — OrderSpot</title>
   <style>
     body { font-family: sans-serif; padding: 40px; line-height: 1.6; max-width: 600px; margin: 0 auto; background: #f4f7f6; }
     .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
@@ -17,12 +17,12 @@
 </head>
 <body>
   <div class="card">
-    <h1>OrderSpot Migration</h1>
-    <p>This tool will populate the <strong>Home Page (demo)</strong>, <strong>bakerscart</strong>, and <strong>resinart</strong> stores.</p>
+    <h1>Home Page Migration</h1>
+    <p>This tool will only update the <strong>Home Page (Marketplace)</strong> with premium photos. It will <strong>NOT</strong> touch BakersCart or ResinArt.</p>
 
     <input type="email" id="email" placeholder="Admin Email">
     <input type="password" id="password" placeholder="Admin Password">
-    <button id="migrateBtn">Log In & Migrate All Data</button>
+    <button id="migrateBtn">Log In & Update Home Page</button>
 
     <div id="status"></div>
   </div>
@@ -30,7 +30,7 @@
   <script type="module">
     import { loginAdmin, saveStoreConfig } from "./firebase-service.js";
 
-    // Full Template Data for Demo/Home (Marketplace View)
+    // Premium Template Data for Home (Marketplace View)
     const fullTemplate = {
       store: {
         name: "OrderSpot Marketplace",
@@ -60,26 +60,6 @@
       ]
     };
 
-    const bakersData = {
-      store: { name: "Baker's Classic Cakes", whatsappNumber: "918073511215", currencySymbol: "₹", accentColor: "#d2691e", accentColorDark: "#8b4513" },
-      categories: ["All", "Classic Cakes", "Premium Cakes"],
-      products: [
-        { id: "chocolate-truffle", name: "Chocolate Truffle Cake", price: 950, category: "Classic Cakes", image: "/products/chocolate-truffle.jpg", inStock: true },
-        { id: "vanilla-bean", name: "Vanilla Bean Cake", price: 800, category: "Classic Cakes", image: "/products/vanilla-bean.jpg", inStock: true },
-        { id: "pineapple-cake", name: "Pineapple Upside Down", price: 850, category: "Classic Cakes", image: "/products/pineapple-cake.jpg", inStock: true }
-      ]
-    };
-
-    const resinArtData = {
-      store: { name: "CraftCreative ResinArt", whatsappNumber: "919844592771", currencySymbol: "₹", accentColor: "#c96c8a", accentColorDark: "#8f4160" },
-      categories: ["All", "Resin Art"],
-      products: [
-        { id: "resin-frame-8", name: "8 Inch Resin Frame", price: 2600, category: "Resin Art", image: "/products/resin-frame-8.jpeg", inStock: true },
-        { id: "rose-pendant-combo", name: "Rose Black & Pendant", price: 1450, category: "Resin Art", image: "/products/rose-pendant-combo.jpeg", inStock: true },
-        { id: "memento-style", name: "Memento Style Resin", price: 3500, category: "Resin Art", image: "/products/memento-style.jpeg", inStock: true }
-      ]
-    };
-
     const btn = document.getElementById('migrateBtn');
     const status = document.getElementById('status');
 
@@ -101,24 +81,15 @@
       }
 
       try {
-        status.textContent = 'Pushing Home Page (demo)...';
+        status.textContent = 'Updating Home Page (demo)...';
         await saveStoreConfig("demo", fullTemplate);
 
-        status.textContent = 'Pushing BakersCart...';
-        await saveStoreConfig("bakerscart", bakersData);
-
-        status.textContent = 'Pushing ResinArt...';
-        await saveStoreConfig("resinart", resinArtData);
-
         status.className = 'success';
-        status.innerHTML = '<strong>Success!</strong> All stores updated.<br><br>' +
-                           'Visit:<br>' +
-                           '• orderspot.in (Home)<br>' +
-                           '• orderspot.in/bakerscart<br>' +
-                           '• orderspot.in/resinart';
+        status.innerHTML = '<strong>Success!</strong> Home page updated with premium photos.<br><br>' +
+                           'Visit: <a href="/" target="_blank">orderspot.in</a>';
       } catch (e) {
         status.className = 'error';
-        status.textContent = 'Migration error: ' + e.message;
+        status.textContent = 'Update error: ' + e.message;
         btn.disabled = false;
       }
     };
