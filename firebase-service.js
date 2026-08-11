@@ -44,28 +44,6 @@ export async function loginAdmin(email, password) {
   }
 }
 
-// DELETE STORE AND ITS PRODUCTS
-export async function deleteStoreData(storeId) {
-  try {
-    // 1. Delete Store Branding
-    await deleteDoc(doc(db, "stores", storeId));
-
-    // 2. Delete All Store Products
-    const q = query(collection(db, "products"), where("storeId", "==", storeId));
-    const querySnapshot = await getDocs(q);
-    const deletePromises = [];
-    querySnapshot.forEach((document) => {
-      deletePromises.push(deleteDoc(doc(db, "products", document.id)));
-    });
-    await Promise.all(deletePromises);
-
-    return { success: true };
-  } catch (error) {
-    console.error("Delete store error:", error);
-    return { success: false, error: error.message };
-  }
-}
-
 // FIND ALL STORES BY OWNER
 export async function getOwnedStores(uid) {
   try {
@@ -89,24 +67,42 @@ export async function getStoreData(storeId) {
     const storeRef = doc(db, "stores", storeId);
     const storeSnap = await getDoc(storeRef);
 
-    if (!storeSnap.exists()) return null;
-    const storeConfig = storeSnap.data();
+    let storeConfig = null;
+
+    if (storeSnap.exists()) {
+      storeConfig = storeSnap.data();
+    } else if (storeId === 'demo') {
+      // Fallback branding for the marketplace home page if 'demo' doc is missing
+      storeConfig = {
+        name: "OrderSpot Marketplace",
+        whatsappNumber: "918722661098",
+        currencySymbol: "₹",
+        accentColor: "#0f766e",
+        accentColorDark: "#0d9488",
+        tagline: "Quality products from local vendors"
+      };
+    } else {
+      return null; // Store truly not found
+    }
 
     // 2. Get Store Products
     let q;
     if (storeId === 'demo') {
-      // Marketplace Mode: Home page shows products from all stores
+      // Marketplace Mode: Home page shows ALL products from ALL stores
       q = query(collection(db, "products"));
     } else {
       // Tenant Mode: Show only this store's products
       q = query(collection(db, "products"), where("storeId", "==", storeId));
     }
 
+    console.log(`Executing product query for storeId: ${storeId}`);
     const querySnapshot = await getDocs(q);
     const products = [];
     querySnapshot.forEach((doc) => {
       products.push({ id: doc.id, ...doc.data() });
     });
+
+    console.log(`Fetched ${products.length} products for ${storeId}`);
 
     return {
       store: storeConfig,
