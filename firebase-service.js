@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 import { firebaseConfig } from "./firebase-config.js";
@@ -44,18 +44,41 @@ export async function loginAdmin(email, password) {
   }
 }
 
-// FIND STORE BY OWNER
-export async function findStoreByOwner(uid) {
+// DELETE STORE AND ITS PRODUCTS
+export async function deleteStoreData(storeId) {
+  try {
+    // 1. Delete Store Branding
+    await deleteDoc(doc(db, "stores", storeId));
+
+    // 2. Delete All Store Products
+    const q = query(collection(db, "products"), where("storeId", "==", storeId));
+    const querySnapshot = await getDocs(q);
+    const deletePromises = [];
+    querySnapshot.forEach((document) => {
+      deletePromises.push(deleteDoc(doc(db, "products", document.id)));
+    });
+    await Promise.all(deletePromises);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Delete store error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// FIND ALL STORES BY OWNER
+export async function getOwnedStores(uid) {
   try {
     const q = query(collection(db, "stores"), where("ownerId", "==", uid));
     const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      return querySnapshot.docs[0].id;
-    }
-    return null;
+    const stores = [];
+    querySnapshot.forEach((doc) => {
+      stores.push({ id: doc.id, ...doc.data() });
+    });
+    return stores;
   } catch (error) {
-    console.error("Error finding store:", error);
-    return null;
+    console.error("Error finding stores:", error);
+    return [];
   }
 }
 
@@ -122,6 +145,28 @@ export async function saveStoreConfig(storeId, config) {
 
     return { success: true };
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+// DELETE STORE AND ITS PRODUCTS
+export async function deleteStoreData(storeId) {
+  try {
+    // 1. Delete Store Branding
+    await deleteDoc(doc(db, "stores", storeId));
+
+    // 2. Delete All Store Products
+    const q = query(collection(db, "products"), where("storeId", "==", storeId));
+    const querySnapshot = await getDocs(q);
+    const deletePromises = [];
+    querySnapshot.forEach((document) => {
+      deletePromises.push(deleteDoc(doc(db, "products", document.id)));
+    });
+    await Promise.all(deletePromises);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Delete store error:", error);
     return { success: false, error: error.message };
   }
 }
