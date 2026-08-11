@@ -105,7 +105,12 @@
 
         <div class="admin-actions" style="flex-direction: column; gap: 10px;">
           <button type="submit" class="btn-whatsapp">Save All Changes to Cloud</button>
-          <button type="button" id="migrateBtn" class="btn-secondary" style="background: #e2e8f0;">Sync Local Config to Cloud</button>
+
+          <div style="display: flex; gap: 10px; width: 100%;">
+            <button type="button" id="importBtn" class="btn-secondary" style="flex: 1; background: #f1f5f9;">Import (CSV/JSON)</button>
+            <button type="button" id="migrateBtn" class="btn-secondary" style="flex: 1; background: #e2e8f0; font-size: 0.8rem;">Sync Local Template</button>
+          </div>
+          <input type="file" id="importFile" accept=".csv,.json" hidden>
         </div>
       </form>
     </main>

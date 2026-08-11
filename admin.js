@@ -1,4 +1,5 @@
 import { getStoreData, saveStoreConfig, uploadImageToCloud, onAuthChange, logoutAdmin, getStoreIdFromUrl, getOwnedStores, deleteStoreData } from "./firebase-service.js";
+import { STORE_BLUEPRINTS } from "./blueprints.js";
 
 let currentConfig = null;
 let currentStoreId = getStoreIdFromUrl();
@@ -98,7 +99,7 @@ async function fetchConfig(id) {
   renderForm();
 }
 
-// 3. RENDER FORM
+// 3. RENDER UI
 function renderForm() {
   $('name').value = currentConfig.store.name || '';
   $('tagline').value = currentConfig.store.tagline || '';
@@ -183,8 +184,6 @@ async function uploadImage(index, file) {
   }
 }
 
-import { STORE_BLUEPRINTS } from "./blueprints.js";
-
 $('sidebarCreateBtn').onclick = $('mainCreateBtn').onclick = () => {
   const id = prompt("Enter a unique ID for your new store (e.g. fashion-hub):");
   if (!id) return;
@@ -206,6 +205,73 @@ $('sidebarCreateBtn').onclick = $('mainCreateBtn').onclick = () => {
   renderForm();
   adminForm.hidden = false;
   welcomeState.hidden = true;
+};
+
+// 5. IMPORT LOGIC
+$('importBtn').onclick = () => $('importFile').click();
+
+$('importFile').onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (event) => {
+    const content = event.target.result;
+    let importedProducts = [];
+
+    try {
+      if (file.name.endsWith('.json')) {
+        const data = JSON.parse(content);
+        importedProducts = Array.isArray(data) ? data : (data.products || []);
+      } else if (file.name.endsWith('.csv')) {
+        const lines = content.split('\n');
+        const headers = lines[0].toLowerCase().split(',');
+
+        for (let i = 1; i < lines.length; i++) {
+          if (!lines[i].trim()) continue;
+          const values = lines[i].split(',');
+          const prod = { id: `imp-${Date.now()}-${i}`, inStock: true };
+
+          headers.forEach((h, idx) => {
+            const val = values[idx]?.trim();
+            if (h.includes('name')) prod.name = val;
+            if (h.includes('price')) prod.price = parseFloat(val) || 0;
+            if (h.includes('category')) prod.category = val;
+            if (h.includes('description')) prod.description = val;
+            if (h.includes('image')) prod.image = val;
+          });
+
+          if (prod.name) importedProducts.push(prod);
+        }
+      }
+
+      if (importedProducts.length > 0) {
+        if (confirm(`Found ${importedProducts.length} products. Append to current list? (Cancel to replace entire list)`)) {
+          currentConfig.products = [...currentConfig.products, ...importedProducts];
+        } else {
+          currentConfig.products = importedProducts;
+        }
+
+        // Auto-add new categories if they don't exist
+        importedProducts.forEach(p => {
+          if (p.category && !currentConfig.categories.includes(p.category)) {
+            currentConfig.categories.push(p.category);
+          }
+        });
+
+        renderForm();
+        showToast(`Imported ${importedProducts.length} products successfully!`);
+      } else {
+        showToast('No valid products found in file.');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error parsing file. Check format.');
+    }
+    // Reset file input
+    $('importFile').value = '';
+  };
+  reader.readAsText(file);
 };
 
 adminForm.onsubmit = async (e) => {
