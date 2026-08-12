@@ -95,5 +95,22 @@ export const STORE_BLUEPRINTS = {
         ]
       }
     ]
+  },
+  food: {
+    store: {
+      name: "The Food Cart",
+      tagline: "Delicious meals delivered hot to your room",
+      whatsappNumber: "8073511215",
+      currencySymbol: "₹",
+      accentColor: "#ea580c",
+      accentColorDark: "#9a3412"
+    },
+    categories: ["All", "Main Course", "Snacks", "Beverages"],
+    products: [
+      { id: "food-1", name: "Hyderabadi Chicken Biryani", price: 320, category: "Main Course", image: "https://images.unsplash.com/photo-1563379091339-03b21bc4a4f8?w=800", description: "Authentic basmati rice cooked with succulent chicken and spices.", inStock: true },
+      { id: "food-2", name: "Paneer Butter Masala Thali", price: 280, category: "Main Course", image: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800", description: "Complete meal with Paneer, Dal, Rice, and Roti.", inStock: true },
+      { id: "food-3", name: "Crispy Veg Burger", price: 150, category: "Snacks", image: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800", description: "Golden fried veg patty with fresh lettuce and mayo.", inStock: true },
+      { id: "food-4", name: "Fresh Lime Soda", price: 60, category: "Beverages", image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=800", description: "Refreshing sweet and salty lemon soda.", inStock: true }
+    ]
   }
 };

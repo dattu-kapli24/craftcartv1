@@ -233,7 +233,7 @@ const handleCreate = () => {
   const id = prompt("Unique store ID (e.g. fashion-hub):");
   if (!id) return;
   const cleanId = id.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const type = prompt("Template: gifting, crochet, bakers, or wholesale", "gifting");
+  const type = prompt("Template: gifting, crochet, bakers, wholesale, or food", "food");
 
   const blueprint = STORE_BLUEPRINTS[type.toLowerCase()] || STORE_BLUEPRINTS['gifting'];
   currentConfig = JSON.parse(JSON.stringify(blueprint));
