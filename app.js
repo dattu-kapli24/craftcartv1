@@ -291,8 +291,6 @@ import { getStoreData, getStoreIdFromUrl, getTieredPrice } from "./firebase-serv
       }
 
       item.qty = nextQty;
-        cart = cart.filter((i) => i.id !== id);
-      }
       saveCart();
       updateCartBadge();
       renderCart();
