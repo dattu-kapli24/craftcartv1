@@ -260,6 +260,24 @@ input, textarea { font-family: inherit; font-size: 1rem; }
   overflow: hidden;
   min-height: 2.5em;
 }
+
+.bulk-pricing-table {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin: 6px 0;
+  padding: 4px 8px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.cart-item__b2b {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  color: #64748b;
+}
+
 .card__desc {
   font-size: var(--fs-sm); color: var(--text-soft);
   display: -webkit-box;

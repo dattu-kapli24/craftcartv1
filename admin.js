@@ -170,8 +170,17 @@ function renderProducts() {
     div.innerHTML = `
       <button type="button" class="remove-product" data-index="${index}">Remove</button>
       <div class="form-row">
-        <div class="form-group"><label>Name</label><input type="text" value="${prod.name}" class="p-name" data-index="${index}"></div>
-        <div class="form-group"><label>Price</label><input type="number" value="${prod.price}" class="p-price" data-index="${index}"></div>
+        <div class="form-group"><label>Base Price</label><input type="number" value="${prod.price}" class="p-price" data-index="${index}"></div>
+        <div class="form-group"><label>MOQ (Min Order Qty)</label><input type="number" value="${prod.moq || 1}" class="p-moq" data-index="${index}"></div>
+      </div>
+      <div class="form-group"><label>Product Name</label><input type="text" value="${prod.name}" class="p-name" data-index="${index}"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Base Price</label><input type="number" value="${prod.price}" class="p-price" data-index="${index}"></div>
+        <div class="form-group"><label>MOQ (Min Order Qty)</label><input type="number" value="${prod.moq || 1}" class="p-moq" data-index="${index}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>SKU</label><input type="text" value="${prod.sku || ''}" class="p-sku" data-index="${index}"></div>
+        <div class="form-group"><label>Pack Size</label><input type="text" value="${prod.packSize || ''}" class="p-pack" data-index="${index}"></div>
       </div>
       <div class="form-group">
         <label>Category</label>
@@ -193,6 +202,12 @@ function renderProducts() {
 
   list.querySelectorAll('.p-name').forEach(el => el.onchange = e => currentConfig.products[e.target.dataset.index].name = e.target.value);
   list.querySelectorAll('.p-price').forEach(el => el.onchange = e => currentConfig.products[e.target.dataset.index].price = parseFloat(e.target.value));
+  list.querySelectorAll('.p-moq').forEach(el => el.onchange = e => currentConfig.products[e.target.dataset.index].moq = parseInt(e.target.value));
+  list.querySelectorAll('.p-sku').forEach(el => el.onchange = e => currentConfig.products[e.target.dataset.index].sku = e.target.value);
+  list.querySelectorAll('.p-pack').forEach(el => el.onchange = e => currentConfig.products[e.target.dataset.index].packSize = e.target.value);
+  list.querySelectorAll('.p-cat').forEach(el => el.onchange = e => currentConfig.products[e.target.dataset.index].category = e.target.value);
+  list.querySelectorAll('.p-sku').forEach(el => el.onchange = e => currentConfig.products[e.target.dataset.index].sku = e.target.value);
+  list.querySelectorAll('.p-pack').forEach(el => el.onchange = e => currentConfig.products[e.target.dataset.index].packSize = e.target.value);
   list.querySelectorAll('.p-cat').forEach(el => el.onchange = e => currentConfig.products[e.target.dataset.index].category = e.target.value);
   list.querySelectorAll('.p-desc').forEach(el => el.onchange = e => currentConfig.products[e.target.dataset.index].description = e.target.value);
   list.querySelectorAll('.p-upload').forEach(el => el.onchange = e => uploadImage(e.target.dataset.index, e.target.files[0]));
@@ -218,7 +233,7 @@ const handleCreate = () => {
   const id = prompt("Unique store ID (e.g. fashion-hub):");
   if (!id) return;
   const cleanId = id.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const type = prompt("Template: gifting, crochet, or bakers", "gifting");
+  const type = prompt("Template: gifting, crochet, bakers, or wholesale", "gifting");
 
   const blueprint = STORE_BLUEPRINTS[type.toLowerCase()] || STORE_BLUEPRINTS['gifting'];
   currentConfig = JSON.parse(JSON.stringify(blueprint));

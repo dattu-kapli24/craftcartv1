@@ -1,4 +1,4 @@
-import { getStoreData, getStoreIdFromUrl } from "./firebase-service.js";
+import { getStoreData, getStoreIdFromUrl, getTieredPrice } from "./firebase-service.js";
 
 (async function () {
   "use strict";
@@ -109,7 +109,9 @@ import { getStoreData, getStoreIdFromUrl } from "./firebase-service.js";
     function cartTotal() {
       return cart.reduce((s, i) => {
         const p = findProduct(i.id);
-        return p ? s + p.price * i.qty : s;
+        if (!p) return s;
+        const unitPrice = getTieredPrice(p, i.qty);
+        return s + unitPrice * i.qty;
       }, 0);
     }
     function discountPct(p) {
@@ -224,11 +226,21 @@ import { getStoreData, getStoreIdFromUrl } from "./firebase-service.js";
         desc.textContent = p.description || "";
 
         const priceRow = document.createElement("div");
-        priceRow.className = "card__price";
-        const sell = document.createElement("span");
-        sell.className = "card__sell";
-        sell.textContent = money(p.price);
-        priceRow.appendChild(sell);
+      priceRow.className = "card__price";
+      const unitPrice = getTieredPrice(p, p.moq || 1);
+      const sell = document.createElement("span");
+      sell.className = "card__sell";
+      sell.textContent = money(unitPrice);
+      priceRow.appendChild(sell);
+
+      if (p.bulkPricing && p.bulkPricing.length > 0) {
+        const table = document.createElement("div");
+        table.className = "bulk-pricing-table";
+        table.innerHTML = p.bulkPricing.map(tier =>
+          `<span>${tier.minQty}${tier.maxQty ? '-'+tier.maxQty : '+'}: ${money(tier.unitPrice)}</span>`
+        ).join(' | ');
+        body.appendChild(table);
+      }
         if (p.originalPrice && p.originalPrice > p.price) {
           const was = document.createElement("span");
           was.className = "card__was";
@@ -254,20 +266,31 @@ import { getStoreData, getStoreIdFromUrl } from "./firebase-service.js";
 
     /* ---------- 9. Cart operations ---------- */
     function addToCart(id) {
+      const p = findProduct(id);
+      if (!p) return;
+      const initialQty = p.moq || 1;
       const item = cart.find((i) => i.id === id);
       if (item) item.qty += 1;
-      else cart.push({ id, qty: 1 });
+      else cart.push({ id, qty: initialQty });
       saveCart();
       updateCartBadge();
-      const p = findProduct(id);
       showToast(p ? p.name + " added to cart" : "Added to cart");
     }
 
     function changeQty(id, delta) {
+      const p = findProduct(id);
       const item = cart.find((i) => i.id === id);
-      if (!item) return;
-      item.qty += delta;
-      if (item.qty <= 0) {
+      if (!item || !p) return;
+
+      const nextQty = item.qty + delta;
+      const minQty = p.moq || 1;
+
+      if (nextQty < minQty) {
+        showToast(`Minimum order for ${p.name} is ${minQty} units`);
+        return;
+      }
+
+      item.qty = nextQty;
         cart = cart.filter((i) => i.id !== id);
       }
       saveCart();
@@ -305,6 +328,9 @@ import { getStoreData, getStoreIdFromUrl } from "./firebase-service.js";
         const row = document.createElement("div");
         row.className = "cart-item";
 
+        const unitPrice = getTieredPrice(p, i.qty);
+        const lineTotalVal = unitPrice * i.qty;
+
         const img = document.createElement("img");
         img.className = "cart-item__img";
         img.src = resolveProductImage(p);
@@ -339,14 +365,17 @@ import { getStoreData, getStoreIdFromUrl } from "./firebase-service.js";
 
         const lineTotal = document.createElement("div");
         lineTotal.className = "cart-item__total";
-        lineTotal.textContent = money(p.price * i.qty);
+        lineTotal.textContent = money(lineTotalVal);
 
-        const remove = document.createElement("button");
-        remove.className = "cart-item__remove";
-        remove.textContent = "Remove";
-        remove.onclick = () => removeItem(i.id);
+        const details = document.createElement("div");
+        details.className = "cart-item__b2b";
+        details.innerHTML = `
+          ${p.sku ? `<small>SKU: ${p.sku}</small> ` : ''}
+          ${p.packSize ? `<small>Pack: ${p.packSize}</small> ` : ''}
+          <small>@ ${money(unitPrice)}/ea</small>
+        `;
 
-        info.append(name, sub, qty);
+        info.append(name, sub, details, qty);
         row.append(img, info, lineTotal, remove);
         cartItemsEl.appendChild(row);
       });
@@ -385,15 +414,24 @@ import { getStoreData, getStoreIdFromUrl } from "./firebase-service.js";
 
       const lines = cart.map((i) => {
         const p = findProduct(i.id);
-        return `- ${p.name} x ${i.qty} = ${money(p.price * i.qty)}`;
+        const unitPrice = getTieredPrice(p, i.qty);
+        const sub = unitPrice * i.qty;
+        return `- ${p.name} ${p.sku ? `(SKU: ${p.sku})` : ''}\n  Qty: ${i.qty} x ${money(unitPrice)} = ${money(sub)}`;
       });
 
+      const subtotal = cartTotal();
+      const gst = subtotal * 0.18; // Example 18% GST
+      const total = subtotal + gst;
+
       const text =
-        `Hello ${store.name}, I would like to place an order:\n` +
+        `Hello ${store.name}, I would like to place a WHOLESALE order:\n` +
         `--------------------------\n` +
         lines.join("\n") + "\n" +
         `--------------------------\n` +
-        `Total Amount: ${money(cartTotal())}\n` +
+        `Subtotal: ${money(subtotal)}\n` +
+        `GST (18%): ${money(gst)}\n` +
+        `Order Total: ${money(total)}\n` +
+        `--------------------------\n` +
         `Delivery Details:\n` +
         `Name: ${name}\n` +
         `Phone: ${phone}\n` +

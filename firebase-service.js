@@ -44,6 +44,19 @@ export async function loginAdmin(email, password) {
   }
 }
 
+// B2B Wholesale Logic
+export function getTieredPrice(product, qty) {
+  if (!product.bulkPricing || !Array.isArray(product.bulkPricing) || product.bulkPricing.length === 0) {
+    return product.price;
+  }
+
+  // Sort tiers by minQty descending to find the highest matching tier
+  const tiers = [...product.bulkPricing].sort((a, b) => b.minQty - a.minQty);
+  const matchedTier = tiers.find(tier => qty >= tier.minQty);
+
+  return matchedTier ? matchedTier.unitPrice : product.price;
+}
+
 // FIND ALL STORES BY OWNER
 export async function getOwnedStores(uid) {
   try {
@@ -143,6 +156,19 @@ export async function saveStoreConfig(storeId, config) {
   } catch (error) {
     return { success: false, error: error.message };
   }
+}
+
+// B2B Wholesale Logic
+export function getTieredPrice(product, qty) {
+  if (!product.bulkPricing || !Array.isArray(product.bulkPricing) || product.bulkPricing.length === 0) {
+    return product.price;
+  }
+
+  // Sort tiers by minQty descending to find the highest matching tier
+  const tiers = [...product.bulkPricing].sort((a, b) => b.minQty - a.minQty);
+  const matchedTier = tiers.find(tier => qty >= tier.minQty);
+
+  return matchedTier ? matchedTier.unitPrice : product.price;
 }
 
 // DELETE STORE AND ITS PRODUCTS
