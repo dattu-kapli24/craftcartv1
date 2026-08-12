@@ -10,6 +10,8 @@ const sidebarList = $('sidebarStoreList');
 const adminForm = $('adminForm');
 const welcomeState = $('welcomeState');
 const viewStoreLink = $('viewStoreLink');
+const sidebar = $('adminSidebar');
+const layout = document.querySelector('.admin-layout');
 
 // 1. AUTH & SIDEBAR INITIALIZATION
 onAuthChange(async (user) => {
@@ -19,12 +21,37 @@ onAuthChange(async (user) => {
     currentUser = user;
     await refreshSidebar();
 
-    // If a store is in the URL, load it.
+    // Load cached config if exists for instant feel
+    const cached = localStorage.getItem(`config_${currentStoreId}`);
+    if (cached) {
+      currentConfig = JSON.parse(cached);
+      renderForm();
+      welcomeState.hidden = true;
+      adminForm.hidden = false;
+    }
+
     if (currentStoreId && currentStoreId !== 'demo' && currentStoreId !== 'admin') {
       fetchConfig(currentStoreId);
     }
+
+    // Initial icons
+    if (window.lucide) window.lucide.createIcons();
   }
 });
+
+// Mobile Menu Toggle
+$('mobileMenuBtn').onclick = () => {
+  sidebar.classList.toggle('open');
+  layout.classList.toggle('sidebar-open');
+};
+
+// Close sidebar on layout click
+layout.onclick = (e) => {
+  if (e.target === layout && sidebar.classList.contains('open')) {
+    sidebar.classList.remove('open');
+    layout.classList.remove('sidebar-open');
+  }
+};
 
 async function refreshSidebar() {
   const stores = await getOwnedStores(currentUser.uid);
@@ -51,6 +78,10 @@ async function refreshSidebar() {
       document.querySelectorAll('.store-nav-item').forEach(el => el.classList.remove('active'));
       btn.classList.add('active');
 
+      // Close sidebar on mobile
+      sidebar.classList.remove('open');
+      layout.classList.remove('sidebar-open');
+
       fetchConfig(s.id);
     };
 
@@ -58,18 +89,13 @@ async function refreshSidebar() {
     delBtn.onclick = async (e) => {
       e.stopPropagation();
       const id = e.target.dataset.id;
-      if (confirm(`Are you sure you want to delete the store "${id}"? This cannot be undone.`)) {
-        showToast(`Deleting ${id}...`);
+      if (confirm(`Delete store "${id}"? This cannot be undone.`)) {
+        showToast(`Deleting...`);
         const result = await deleteStoreData(id);
         if (result.success) {
-          showToast('Store deleted successfully');
-          if (currentStoreId === id) {
-            window.location.search = '';
-          } else {
-            await refreshSidebar();
-          }
-        } else {
-          showToast('Error: ' + result.error);
+          showToast('Deleted');
+          if (currentStoreId === id) window.location.search = '';
+          else await refreshSidebar();
         }
       }
     };
@@ -77,26 +103,31 @@ async function refreshSidebar() {
   });
 }
 
-// 2. FETCH DATA
+// 2. FETCH DATA WITH CACHING
 async function fetchConfig(id) {
-  showToast(`Loading ${id}...`);
-  currentConfig = await getStoreData(id);
+  // Only show toast if not already loaded from cache
+  if (!currentConfig) showToast(`Loading...`);
 
-  welcomeState.hidden = true;
-  adminForm.hidden = false;
-  viewStoreLink.hidden = false;
-  viewStoreLink.href = `/${id}`;
+  const freshData = await getStoreData(id);
 
-  if (!currentConfig) {
-    showToast('Template not found. Creating new...');
+  if (freshData) {
+    currentConfig = freshData;
+    localStorage.setItem(`config_${id}`, JSON.stringify(freshData));
+    renderForm();
+  } else if (!currentConfig) {
+    showToast('Creating new store...');
     currentConfig = {
       store: { name: "New Store", whatsappNumber: "", accentColor: "#0f766e", accentColorDark: "#0d9488" },
       categories: ["All"],
       products: []
     };
+    renderForm();
   }
 
-  renderForm();
+  welcomeState.hidden = true;
+  adminForm.hidden = false;
+  viewStoreLink.hidden = false;
+  viewStoreLink.href = `/${id}`;
 }
 
 // 3. RENDER UI
@@ -160,7 +191,6 @@ function renderProducts() {
     list.appendChild(div);
   });
 
-  // Event re-binding
   list.querySelectorAll('.p-name').forEach(el => el.onchange = e => currentConfig.products[e.target.dataset.index].name = e.target.value);
   list.querySelectorAll('.p-price').forEach(el => el.onchange = e => currentConfig.products[e.target.dataset.index].price = parseFloat(e.target.value));
   list.querySelectorAll('.p-cat').forEach(el => el.onchange = e => currentConfig.products[e.target.dataset.index].category = e.target.value);
@@ -184,100 +214,28 @@ async function uploadImage(index, file) {
   }
 }
 
-$('sidebarCreateBtn').onclick = $('mainCreateBtn').onclick = () => {
-  const id = prompt("Enter a unique ID for your new store (e.g. fashion-hub):");
+const handleCreate = () => {
+  const id = prompt("Unique store ID (e.g. fashion-hub):");
   if (!id) return;
-
   const cleanId = id.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const templateType = prompt("Choose a template (type: gifting, crochet, or bakers):", "gifting");
+  const type = prompt("Template: gifting, crochet, or bakers", "gifting");
 
-  const blueprint = STORE_BLUEPRINTS[templateType.toLowerCase()] || STORE_BLUEPRINTS['gifting'];
-
-  // Clone the blueprint as the initial config
+  const blueprint = STORE_BLUEPRINTS[type.toLowerCase()] || STORE_BLUEPRINTS['gifting'];
   currentConfig = JSON.parse(JSON.stringify(blueprint));
   currentStoreId = cleanId;
 
-  // Update URL without reload
-  const newUrl = `${window.location.pathname}?store=${cleanId}`;
-  window.history.pushState({path:newUrl},'',newUrl);
-
-  showToast(`Created store using "${templateType}" template!`);
+  window.history.pushState({path: `${window.location.pathname}?store=${cleanId}`},'', `${window.location.pathname}?store=${cleanId}`);
   renderForm();
-  adminForm.hidden = false;
   welcomeState.hidden = true;
+  adminForm.hidden = false;
+  sidebar.classList.remove('open');
+  layout.classList.remove('sidebar-open');
 };
 
-// 5. IMPORT LOGIC
-$('importBtn').onclick = () => $('importFile').click();
-
-$('importFile').onchange = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = async (event) => {
-    const content = event.target.result;
-    let importedProducts = [];
-
-    try {
-      if (file.name.endsWith('.json')) {
-        const data = JSON.parse(content);
-        importedProducts = Array.isArray(data) ? data : (data.products || []);
-      } else if (file.name.endsWith('.csv')) {
-        const lines = content.split('\n');
-        const headers = lines[0].toLowerCase().split(',');
-
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
-          const values = lines[i].split(',');
-          const prod = { id: `imp-${Date.now()}-${i}`, inStock: true };
-
-          headers.forEach((h, idx) => {
-            const val = values[idx]?.trim();
-            if (h.includes('name')) prod.name = val;
-            if (h.includes('price')) prod.price = parseFloat(val) || 0;
-            if (h.includes('category')) prod.category = val;
-            if (h.includes('description')) prod.description = val;
-            if (h.includes('image')) prod.image = val;
-          });
-
-          if (prod.name) importedProducts.push(prod);
-        }
-      }
-
-      if (importedProducts.length > 0) {
-        if (confirm(`Found ${importedProducts.length} products. Append to current list? (Cancel to replace entire list)`)) {
-          currentConfig.products = [...currentConfig.products, ...importedProducts];
-        } else {
-          currentConfig.products = importedProducts;
-        }
-
-        // Auto-add new categories if they don't exist
-        importedProducts.forEach(p => {
-          if (p.category && !currentConfig.categories.includes(p.category)) {
-            currentConfig.categories.push(p.category);
-          }
-        });
-
-        renderForm();
-        showToast(`Imported ${importedProducts.length} products successfully!`);
-      } else {
-        showToast('No valid products found in file.');
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Error parsing file. Check format.');
-    }
-    // Reset file input
-    $('importFile').value = '';
-  };
-  reader.readAsText(file);
-};
+$('sidebarCreateBtn').onclick = $('mainCreateBtn').onclick = handleCreate;
 
 adminForm.onsubmit = async (e) => {
   e.preventDefault();
-
-  // Sync branding
   currentConfig.store.name = $('name').value;
   currentConfig.store.tagline = $('tagline').value;
   currentConfig.store.whatsappNumber = $('whatsappNumber').value;
@@ -288,20 +246,18 @@ adminForm.onsubmit = async (e) => {
   showToast('Saving...');
   const res = await saveStoreConfig(currentStoreId, currentConfig);
   if (res.success) {
-    showToast('Saved Successfully!');
+    localStorage.setItem(`config_${currentStoreId}`, JSON.stringify(currentConfig));
+    showToast('Saved!');
     await refreshSidebar();
-  } else {
-    showToast('Error: ' + res.error);
   }
 };
 
 $('migrateBtn').onclick = async () => {
-  if (!window.STORE_CONFIG) { showToast('Error: Local template not found.'); return; }
-  if (confirm('Sync local template to this store?')) {
-    showToast('Migrating...');
+  if (confirm('Sync local template?')) {
     currentConfig = JSON.parse(JSON.stringify(window.STORE_CONFIG));
-    const res = await saveStoreConfig(currentStoreId, currentConfig);
-    if (res.success) { renderForm(); showToast('Sync Successful!'); }
+    await saveStoreConfig(currentStoreId, currentConfig);
+    renderForm();
+    showToast('Synced!');
   }
 };
 
@@ -314,10 +270,6 @@ function showToast(msg) {
   const toast = $('toast');
   if (!toast) return;
   toast.textContent = msg;
-  toast.hidden = false;
-  toast.classList.add('toast--show');
-  setTimeout(() => {
-    toast.classList.remove('toast--show');
-    setTimeout(() => { toast.hidden = true; }, 300);
-  }, 3000);
+  toast.className = 'toast toast--show';
+  setTimeout(() => toast.className = 'toast', 3000);
 }
