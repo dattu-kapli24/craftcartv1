@@ -1,4 +1,5 @@
 import { getStoreData, saveStoreConfig, onAuthChange, logoutAdmin, getStoreIdFromUrl, getOwnedStores, auth } from "./firebase-service.js";
+import { STORE_BLUEPRINTS } from "./blueprints.js";
 
 (async function() {
   let currentConfig = null;
@@ -214,19 +215,27 @@ import { getStoreData, saveStoreConfig, onAuthChange, logoutAdmin, getStoreIdFro
   };
 
   // RECOVERY BUTTON LOGIC
-  $("migrateBtn").textContent = "Restore Initial Data (Demo/Resin/Baker)";
+  $("migrateBtn").textContent = "Apply Blueprint Template";
   $("migrateBtn").onclick = async () => {
-    if (!confirm("This will overwrite your cloud data with the initial templates. Proceed?")) return;
+    const blueprintKeys = Object.keys(STORE_BLUEPRINTS);
+    const choice = prompt(`Enter blueprint key to apply to current store (${currentStoreId}):\nOptions: ${blueprintKeys.join(', ')}`, 'bakerswholesale');
 
-    const initialData = window.STORE_CONFIG; // Source from local file
-    if (!initialData) return alert("Initial data not found in local file.");
-
-    const storesToRestore = ['demo', 'resinart', 'bakerscart'];
-    for (const id of storesToRestore) {
-      await saveStoreConfig(id, initialData);
+    if (!choice || !STORE_BLUEPRINTS[choice]) {
+      if (choice) alert("Invalid blueprint key.");
+      return;
     }
-    alert("Data restored! Refreshing...");
-    window.location.reload();
+
+    if (!confirm(`This will OVERWRITE all products and branding for "${currentStoreId}" with the "${choice}" template. Proceed?`)) return;
+
+    const blueprint = STORE_BLUEPRINTS[choice];
+    const res = await saveStoreConfig(currentStoreId, blueprint);
+
+    if (res.success) {
+      alert("Blueprint applied! Refreshing...");
+      window.location.reload();
+    } else {
+      alert("Error applying blueprint: " + res.error);
+    }
   };
 
   $("logoutBtn").onclick = async () => { await logoutAdmin(); window.location.href = "/login.html"; };
