@@ -75,6 +75,13 @@
             <label for="currencySymbol">Currency Symbol</label>
             <input type="text" id="currencySymbol" name="currencySymbol" required>
           </div>
+          <div class="form-group">
+            <label for="storeType">Store Type</label>
+            <select id="storeType" name="storeType" class="form-control" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg);">
+              <option value="B2C">B2C Retail (Standard)</option>
+              <option value="B2B">B2B Wholesale (Bulk Tiers/MOQs)</option>
+            </select>
+          </div>
           <div class="form-row">
             <div class="form-group">
               <label for="accentColor">Accent Color</label>
@@ -111,9 +118,10 @@
         <div class="admin-actions" style="flex-direction: column; gap: 10px;">
           <button type="submit" class="btn-whatsapp">Save All Changes to Cloud</button>
 
-          <div style="display: flex; gap: 10px; width: 100%;">
-            <button type="button" id="importBtn" class="btn-secondary" style="flex: 1; background: #f1f5f9;">Import (CSV/JSON)</button>
-            <button type="button" id="migrateBtn" class="btn-secondary" style="flex: 1; background: #e2e8f0; font-size: 0.8rem;">Sync Local Template</button>
+          <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+            <button type="button" id="importBtn" class="btn-secondary" style="background: #f1f5f9;">Import (CSV/JSON)</button>
+            <button type="button" id="migrateBtn" class="btn-secondary" style="background: #e2e8f0; font-size: 0.8rem;">Apply Template to Current</button>
+            <button type="button" id="repairAllBtn" class="btn-secondary" style="background: #fee2e2; color: #ef4444; border-color: #fecaca; font-size: 0.75rem;">Repair & Restore All Stores</button>
           </div>
           <input type="file" id="importFile" accept=".csv,.json" hidden>
         </div>

@@ -1,48 +1,35 @@
-import { getStoreData, getStoreIdFromUrl, getTieredPrice } from "./firebase-service.js";
+import { getStoreData, getStoreIdFromUrl } from "./firebase-service.js";
+import { getEffectiveMOQ, calculateUnitPrice, calculateItemTotal } from "./utils/pricing.js";
 
 (async function () {
   "use strict";
 
   const storeId = getStoreIdFromUrl();
-  const CACHE_KEY = `cached_config_${storeId}`;
+  const $ = (id) => document.getElementById(id);
 
-  /* ---------- 1. Fetch Dynamic Config with Caching ---------- */
+  /* ---------- 1. Fetch Dynamic Config ---------- */
   let CFG = null;
 
-  // Try loading from localStorage for instant display
-  const cachedData = localStorage.getItem(CACHE_KEY);
-  if (cachedData) {
-    CFG = JSON.parse(cachedData);
-    console.log("Loading from cache...");
-    initializeApp(CFG);
-  }
-
-  // Fetch fresh data from Firebase
   try {
-    const freshData = await getStoreData(storeId);
-    if (freshData) {
-      // If no cache was present OR data is different, re-render
-      const dataChanged = JSON.stringify(freshData) !== cachedData;
-      if (!CFG || dataChanged) {
-        CFG = freshData;
-        localStorage.setItem(CACHE_KEY, JSON.stringify(freshData));
-        initializeApp(CFG);
-      }
-    } else if (!CFG) {
-      handleNotFound(storeId);
+    const data = await getStoreData(storeId);
+    if (data) {
+      CFG = data;
+      initializeApp(CFG);
+    } else {
+      // Fallback to local config if cloud is empty
+      CFG = window.STORE_CONFIG;
+      if (CFG) initializeApp(CFG);
+      else handleNotFound(storeId);
     }
   } catch (err) {
     console.error("Fetch failed:", err);
-    if (!CFG) handleNotFound(storeId);
+    CFG = window.STORE_CONFIG;
+    if (CFG) initializeApp(CFG);
+    else handleNotFound(storeId);
   }
 
   function handleNotFound(id) {
-    document.body.innerHTML = `
-      <div style="padding:4rem; text-align:center; font-family:sans-serif;">
-        <h1>OrderSpot — Store Not Found</h1>
-        <p>The store "<strong>${id}</strong>" does not exist or has not been configured yet.</p>
-        <a href="/" style="color:blue">Back to Home</a>
-      </div>`;
+    document.body.innerHTML = `<div style="padding:4rem; text-align:center;"><h1>Store Not Found</h1><p>The store "${id}" does not exist.</p></div>`;
   }
 
   function initializeApp(config) {
@@ -56,406 +43,223 @@ import { getStoreData, getStoreIdFromUrl, getTieredPrice } from "./firebase-serv
     let searchQuery = "";
 
     /* ---------- 3. DOM refs ---------- */
-    const $ = (id) => document.getElementById(id);
     const brandLogo = $("brandLogo");
     const storeNameEl = $("storeName");
     const storeTaglineEl = $("storeTagline");
-    const footerNameEl = $("footerName");
     const searchInput = $("searchInput");
     const cartBtn = $("cartBtn");
     const cartCount = $("cartCount");
     const pillsEl = $("categoryPills");
     const gridEl = $("productGrid");
-    const gridTitle = $("gridTitle");
-    const gridCount = $("gridCount");
-    const emptyState = $("emptyState");
-    const overlay = $("overlay");
     const cartPanel = $("cartPanel");
     const cartClose = $("cartClose");
     const cartItemsEl = $("cartItems");
-    const cartFoot = $("cartFoot");
     const cartTotalEl = $("cartTotal");
     const checkoutForm = $("checkoutForm");
-    const custName = $("custName");
-    const custPhone = $("custPhone");
-    const custAddress = $("custAddress");
-    const custPin = $("custPin");
-    const custNotes = $("custNotes");
-    const placeOrderBtn = $("placeOrderBtn");
     const toast = $("toast");
-    const header = $("header");
 
     /* ---------- 4. Helpers ---------- */
     const money = (n) => CURRENCY + Number(n).toLocaleString("en-IN");
+    function loadCart() { try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : []; } catch { return []; } }
+    function saveCart() { localStorage.setItem(STORAGE_KEY, JSON.stringify(cart)); }
+    function findProduct(id) { return products.find((p) => p.id === id); }
 
-    function loadCart() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : [];
-      } catch { return []; }
-    }
-    function saveCart() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
-    }
-    function findProduct(id) {
-      return products.find((p) => p.id === id);
-    }
-    function resolveProductImage(p) {
-      return p.image || "/products/placeholder.jpg";
-    }
-    function cartQty() {
-      return cart.reduce((s, i) => s + i.qty, 0);
-    }
     function cartTotal() {
       return cart.reduce((s, i) => {
         const p = findProduct(i.id);
         if (!p) return s;
-        const unitPrice = getTieredPrice(p, i.qty);
-        return s + unitPrice * i.qty;
+        const unitPrice = calculateUnitPrice(p, i.qty, store.storeType || "B2C");
+        return s + (unitPrice * i.qty);
       }, 0);
     }
-    function discountPct(p) {
-      if (!p.originalPrice || p.originalPrice <= p.price) return 0;
-      return Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
-    }
 
-    /* ---------- 5. Toast ---------- */
-    let toastTimer;
     function showToast(msg) {
       toast.textContent = msg;
       toast.hidden = false;
-      requestAnimationFrame(() => toast.classList.add("toast--show"));
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => {
-        toast.classList.remove("toast--show");
-        setTimeout(() => { toast.hidden = true; }, 250);
-      }, 1800);
+      toast.classList.add("toast--show");
+      setTimeout(() => { toast.classList.remove("toast--show"); setTimeout(() => toast.hidden = true, 300); }, 2000);
     }
 
-    /* ---------- 6. Apply branding ---------- */
+    /* ---------- 5. UI Logic ---------- */
     function applyBranding() {
       storeNameEl.textContent = store.name;
       storeTaglineEl.textContent = store.tagline || "";
-      footerNameEl.textContent = store.name;
       if (brandLogo) brandLogo.textContent = store.name.charAt(0).toUpperCase();
-
       document.documentElement.style.setProperty("--accent", store.accentColor);
-      document.documentElement.style.setProperty("--accent-dark", store.accentColorDark || store.accentColor);
-
-      document.title = `${store.name} — OrderSpot Catalog`;
-      const metaTheme = document.querySelector('meta[name="theme-color"]');
-      if (metaTheme) metaTheme.setAttribute("content", store.accentColor);
+      document.title = `${store.name} — OrderSpot`;
     }
 
-    /* ---------- 7. Render category pills ---------- */
     function renderPills() {
       pillsEl.innerHTML = "";
       categories.forEach((cat) => {
         const btn = document.createElement("button");
         btn.className = "pill" + (cat === activeCategory ? " pill--active" : "");
         btn.textContent = cat;
-        btn.onclick = () => {
-          activeCategory = cat;
-          renderPills();
-          renderGrid();
-        };
+        btn.onclick = () => { activeCategory = cat; renderPills(); renderGrid(); };
         pillsEl.appendChild(btn);
       });
     }
 
-    /* ---------- 8. Render product grid ---------- */
-    function visibleProducts() {
-      const q = searchQuery.trim().toLowerCase();
-      return products.filter((p) => {
-        const inCat = activeCategory === "All" || p.category === activeCategory;
-        const inSearch = !q ||
-          p.name.toLowerCase().includes(q) ||
-          (p.description && p.description.toLowerCase().includes(q));
-        return inCat && inSearch;
-      });
-    }
-
     function renderGrid() {
-      const list = visibleProducts();
-      gridTitle.textContent = activeCategory === "All" ? "All Products" : activeCategory;
-      gridCount.textContent = list.length ? `${list.length} item${list.length > 1 ? "s" : ""}` : "";
+      const q = searchQuery.toLowerCase();
+      const list = products.filter(p => (activeCategory === "All" || p.category === activeCategory) && p.name.toLowerCase().includes(q));
       gridEl.innerHTML = "";
+      const storeType = store.storeType || 'B2C';
 
-      if (!list.length) {
-        emptyState.hidden = false;
-        return;
-      }
-      emptyState.hidden = true;
-
-      list.forEach((p) => {
+      list.forEach(p => {
         const card = document.createElement("article");
-        card.className = "card" + (p.inStock ? "" : " card--out");
+        card.className = "card";
+        const moq = getEffectiveMOQ(p, storeType);
 
-        const off = discountPct(p);
-        const imgWrap = document.createElement("div");
-        imgWrap.className = "card__img-wrap";
-        const img = document.createElement("img");
-        img.className = "card__img";
-        img.src = resolveProductImage(p);
-        img.alt = p.name;
-        img.loading = "lazy";
-        imgWrap.appendChild(img);
-
-        if (off > 0) {
-          const badge = document.createElement("span");
-          badge.className = "card__badge";
-          badge.textContent = off + "% OFF";
-          imgWrap.appendChild(badge);
-        }
-        if (!p.inStock) {
-          const sold = document.createElement("span");
-          sold.className = "card__soldout";
-          sold.textContent = "Sold Out";
-          imgWrap.appendChild(sold);
+        let bulkPricingHtml = '';
+        if (storeType === 'B2B' && p.bulkPricing) {
+          bulkPricingHtml = `
+            <div class="bulk-pricing-table">
+              <strong>Bulk Pricing:</strong><br>
+              ${p.bulkPricing.map(t => `${t.minQty}+: ${money(t.price)}`).join('<br>')}
+            </div>
+          `;
         }
 
-        const body = document.createElement("div");
-        body.className = "card__body";
-
-        const title = document.createElement("h3");
-        title.className = "card__title";
-        title.textContent = p.name;
-
-        const desc = document.createElement("p");
-        desc.className = "card__desc";
-        desc.textContent = p.description || "";
-
-        const priceRow = document.createElement("div");
-      priceRow.className = "card__price";
-      const unitPrice = getTieredPrice(p, p.moq || 1);
-      const sell = document.createElement("span");
-      sell.className = "card__sell";
-      sell.textContent = money(unitPrice);
-      priceRow.appendChild(sell);
-
-      if (p.bulkPricing && p.bulkPricing.length > 0) {
-        const table = document.createElement("div");
-        table.className = "bulk-pricing-table";
-        table.innerHTML = p.bulkPricing.map(tier =>
-          `<span>${tier.minQty}${tier.maxQty ? '-'+tier.maxQty : '+'}: ${money(tier.unitPrice)}</span>`
-        ).join(' | ');
-        body.appendChild(table);
-      }
-        if (p.originalPrice && p.originalPrice > p.price) {
-          const was = document.createElement("span");
-          was.className = "card__was";
-          was.textContent = money(p.originalPrice);
-          priceRow.appendChild(was);
-        }
-
-        const addBtn = document.createElement("button");
-        addBtn.className = "card__add";
-        addBtn.textContent = "Add to Cart";
-        if (!p.inStock) {
-          addBtn.disabled = true;
-          addBtn.textContent = "Sold Out";
-        } else {
-          addBtn.onclick = () => addToCart(p.id);
-        }
-
-        body.append(title, desc, priceRow, addBtn);
-        card.append(imgWrap, body);
+        card.innerHTML = `
+          <div class="card__img-wrap">
+            <img class="card__img" src="${p.image}" alt="${p.name}">
+            ${storeType === 'B2B' && p.moq ? `<span class="card__badge">MOQ: ${p.moq}</span>` : ''}
+          </div>
+          <div class="card__body">
+            <h3 class="card__title">${p.name}</h3>
+            ${p.sku ? `<p class="card__desc">SKU: ${p.sku}</p>` : ''}
+            <p class="card__price">
+              <span class="card__sell">${money(p.price)}</span>
+              ${p.packSize ? `<span class="card__was" style="text-decoration:none">/ ${p.packSize}</span>` : ''}
+            </p>
+            ${bulkPricingHtml}
+            <button class="card__add">Add to Cart</button>
+          </div>
+        `;
+        card.querySelector('button').onclick = () => addToCart(p.id);
         gridEl.appendChild(card);
       });
     }
 
-    /* ---------- 9. Cart operations ---------- */
     function addToCart(id) {
       const p = findProduct(id);
-      if (!p) return;
-      const initialQty = p.moq || 1;
-      const item = cart.find((i) => i.id === id);
-      if (item) item.qty += 1;
-      else cart.push({ id, qty: initialQty });
+      const storeType = store.storeType || 'B2C';
+      const moq = getEffectiveMOQ(p, storeType);
+
+      const item = cart.find(i => i.id === id);
+      if (item) {
+        item.qty++;
+      } else {
+        cart.push({ id, qty: moq });
+      }
       saveCart();
-      updateCartBadge();
-      showToast(p ? p.name + " added to cart" : "Added to cart");
+      updateBadge();
+      showToast(item ? "Updated cart quantity" : "Added to cart");
     }
 
-    function changeQty(id, delta) {
+    function updateCartQty(id, delta) {
+      const item = cart.find(i => i.id === id);
+      if (!item) return;
       const p = findProduct(id);
-      const item = cart.find((i) => i.id === id);
-      if (!item || !p) return;
+      const moq = getEffectiveMOQ(p, store.storeType || 'B2C');
 
-      const nextQty = item.qty + delta;
-      const minQty = p.moq || 1;
+      item.qty += delta;
 
-      if (nextQty < minQty) {
-        showToast(`Minimum order for ${p.name} is ${minQty} units`);
-        return;
+      if (item.qty < moq) {
+        if (delta < 0) {
+          cart = cart.filter(i => i.id !== id);
+        } else {
+          item.qty = moq;
+        }
       }
 
-      item.qty = nextQty;
       saveCart();
-      updateCartBadge();
       renderCart();
+      updateBadge();
+    }
+    window.updateQty = updateCartQty;
+
+    function updateBadge() {
+      const qty = cart.reduce((s, i) => s + i.qty, 0);
+      cartCount.textContent = qty;
+      cartCount.hidden = qty === 0;
     }
 
-    function removeItem(id) {
-      cart = cart.filter((i) => i.id !== id);
-      saveCart();
-      updateCartBadge();
-      renderCart();
-    }
-
-    function updateCartBadge() {
-      const q = cartQty();
-      if (cartCount) {
-        cartCount.textContent = q;
-        cartCount.hidden = q === 0;
-      }
-    }
-
-    /* ---------- 10. Render cart panel ---------- */
     function renderCart() {
       cartItemsEl.innerHTML = "";
-      if (!cart.length) {
-        cartFoot.style.display = "none";
+      const storeType = store.storeType || "B2C";
+
+      if (cart.length === 0) {
+        cartItemsEl.innerHTML = '<div class="cart__empty">Your cart is empty</div>';
+        cartTotalEl.textContent = money(0);
         return;
       }
-      cartFoot.style.display = "";
 
-      cart.forEach((i) => {
+      cart.forEach(i => {
         const p = findProduct(i.id);
         if (!p) return;
+
+        const unitPrice = calculateUnitPrice(p, i.qty, storeType);
+        const itemTotal = unitPrice * i.qty;
+
         const row = document.createElement("div");
         row.className = "cart-item";
-
-        const unitPrice = getTieredPrice(p, i.qty);
-        const lineTotalVal = unitPrice * i.qty;
-
-        const img = document.createElement("img");
-        img.className = "cart-item__img";
-        img.src = resolveProductImage(p);
-        img.alt = p.name;
-        img.loading = "lazy";
-
-        const info = document.createElement("div");
-        info.className = "cart-item__info";
-
-        const name = document.createElement("div");
-        name.className = "cart-item__name";
-        name.textContent = p.name;
-
-        const sub = document.createElement("div");
-        sub.className = "cart-item__sub";
-        sub.textContent = money(p.price) + " each";
-
-        const qty = document.createElement("div");
-        qty.className = "qty";
-        const minus = document.createElement("button");
-        minus.className = "qty__btn";
-        minus.textContent = "−";
-        minus.onclick = () => changeQty(i.id, -1);
-        const num = document.createElement("span");
-        num.className = "qty__num";
-        num.textContent = i.qty;
-        const plus = document.createElement("button");
-        plus.className = "qty__btn";
-        plus.textContent = "+";
-        plus.onclick = () => changeQty(i.id, 1);
-        qty.append(minus, num, plus);
-
-        const lineTotal = document.createElement("div");
-        lineTotal.className = "cart-item__total";
-        lineTotal.textContent = money(lineTotalVal);
-
-        const details = document.createElement("div");
-        details.className = "cart-item__b2b";
-        details.innerHTML = `
-          ${p.sku ? `<small>SKU: ${p.sku}</small> ` : ''}
-          ${p.packSize ? `<small>Pack: ${p.packSize}</small> ` : ''}
-          <small>@ ${money(unitPrice)}/ea</small>
+        row.innerHTML = `
+          <img src="${p.image}" class="cart-item__img" alt="${p.name}">
+          <div class="cart-item__info">
+            <h4 class="cart-item__name">${p.name}</h4>
+            <div class="cart-item__sub">${money(unitPrice)} / unit</div>
+            ${storeType === 'B2B' && p.sku ? `<div class="cart-item__sub">SKU: ${p.sku}</div>` : ''}
+          </div>
+          <div class="cart-item__total">${money(itemTotal)}</div>
+          <div class="qty">
+            <button class="qty__btn" onclick="window.updateQty('${i.id}', -1)">−</button>
+            <span class="qty__num">${i.qty}</span>
+            <button class="qty__btn" onclick="window.updateQty('${i.id}', 1)">+</button>
+          </div>
+          <button class="cart-item__remove" onclick="window.updateQty('${i.id}', -${i.qty})">Remove</button>
         `;
-
-        info.append(name, sub, details, qty);
-        row.append(img, info, lineTotal, remove);
         cartItemsEl.appendChild(row);
       });
-
       cartTotalEl.textContent = money(cartTotal());
     }
 
-    /* ---------- 11. Cart open/close ---------- */
-    function openCart() {
-      renderCart();
-      overlay.hidden = false;
-      cartPanel.classList.add("cart--open");
-      document.body.style.overflow = "hidden";
-    }
-    function closeCart() {
-      overlay.hidden = true;
-      cartPanel.classList.remove("cart--open");
-      document.body.style.overflow = "";
-    }
-
-    /* ---------- 12. Dynamic WhatsApp checkout ---------- */
     function placeOrder(e) {
       e.preventDefault();
-      if (!cart.length) { showToast("Your cart is empty"); return; }
+      const storeType = store.storeType || "B2C";
 
-      const name = custName.value.trim();
-      const phone = custPhone.value.trim();
-      const address = custAddress.value.trim();
-      const pin = custPin.value.trim();
-      const notes = custNotes.value.trim();
-
-      if (!name || !phone || !address || !pin) {
-        showToast("Please fill required fields");
-        return;
+      // MOQ Validation
+      if (storeType === 'B2B') {
+        for (const item of cart) {
+          const p = findProduct(item.id);
+          const moq = getEffectiveMOQ(p, storeType);
+          if (item.qty < moq) {
+            showToast(`Minimum order for ${p.name} is ${moq}`);
+            return;
+          }
+        }
       }
 
-      const lines = cart.map((i) => {
+      const lines = cart.map(i => {
         const p = findProduct(i.id);
-        const unitPrice = getTieredPrice(p, i.qty);
-        const sub = unitPrice * i.qty;
-        return `- ${p.name} ${p.sku ? `(SKU: ${p.sku})` : ''}\n  Qty: ${i.qty} x ${money(unitPrice)} = ${money(sub)}`;
+        const unitPrice = calculateUnitPrice(p, i.qty, storeType);
+        let line = `- ${p.name}`;
+        if (p.sku) line += ` [${p.sku}]`;
+        line += ` x ${i.qty} @ ${money(unitPrice)} = ${money(unitPrice * i.qty)}`;
+        return line;
       });
 
-      const subtotal = cartTotal();
-      const gst = subtotal * 0.18; // Example 18% GST
-      const total = subtotal + gst;
+      const text = `New Order from ${store.name} (${storeType}):\n\n${lines.join("\n")}\n\nTotal: ${money(cartTotal())}\n\nCustomer Details:\nName: ${$("custName").value}\nPhone: ${$("custPhone").value}\nAddress: ${$("custAddress").value}\nNotes: ${$("custNotes").value}`;
 
-      const text =
-        `Hello ${store.name}, I would like to place a WHOLESALE order:\n` +
-        `--------------------------\n` +
-        lines.join("\n") + "\n" +
-        `--------------------------\n` +
-        `Subtotal: ${money(subtotal)}\n` +
-        `GST (18%): ${money(gst)}\n` +
-        `Order Total: ${money(total)}\n` +
-        `--------------------------\n` +
-        `Delivery Details:\n` +
-        `Name: ${name}\n` +
-        `Phone: ${phone}\n` +
-        `Address: ${address}\n` +
-        `Pincode: ${pin}` +
-        (notes ? `\nNotes: ${notes}` : "");
-
-      const url = `https://wa.me/${store.whatsappNumber}?text=${encodeURIComponent(text)}`;
-      window.open(url, "_blank", "noopener");
+      window.open(`https://wa.me/${store.whatsappNumber}?text=${encodeURIComponent(text)}`, "_blank");
     }
 
-    /* ---------- 13. Events ---------- */
-    searchInput.oninput = () => {
-      searchQuery = searchInput.value;
-      renderGrid();
-    };
-    cartBtn.onclick = openCart;
-    cartClose.onclick = closeCart;
-    overlay.onclick = closeCart;
+    /* ---------- Init ---------- */
+    searchInput.oninput = () => { searchQuery = searchInput.value; renderGrid(); };
+    cartBtn.onclick = () => { renderCart(); cartPanel.classList.add("cart--open"); };
+    cartClose.onclick = () => cartPanel.classList.remove("cart--open");
     checkoutForm.onsubmit = placeOrder;
-
-    /* ---------- 14. Init ---------- */
-    applyBranding();
-    renderPills();
-    renderGrid();
-    updateCartBadge();
+    applyBranding(); renderPills(); renderGrid(); updateBadge();
   }
-
 })();

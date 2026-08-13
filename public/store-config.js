@@ -17,10 +17,11 @@ window.STORE_CONFIG = {
     currencySymbol: "₹",
     accentColor: "#c96c8a",      // rose-pink resin art accent
     accentColorDark: "#8f4160",  // deeper rose for hover/gradient
+    storeType: "B2C",            // 'B2C' or 'B2B'
   },
 
   /* ---------- Category filter pills (first one is the default) ---------- */
-  categories: ["All", "Resin Art", "Crochet", "Bakers", "Gifting"],
+  categories: ["All", "Resin Art", "Crochet", "Bakers", "Gifting", "Wholesale"],
 
   /* ---------- Products ----------
    * image: can be a local path ("/products/saree1.jpg") or any URL.
@@ -146,6 +147,22 @@ window.STORE_CONFIG = {
       image: "/products/gifting-scented-candle.jpg",
       description: "Set of hand-poured soy candles in assorted fragrances.",
       inStock: true,
+    },
+    {
+      id: "bulk-candles-wholesale",
+      name: "[B2B] Scented Candle Bulk Pack",
+      price: 450,
+      category: "Wholesale",
+      image: "/products/gifting-scented-candle.jpg",
+      description: "Bulk order for boutique owners. Minimum 24 units.",
+      inStock: true,
+      moq: 24,
+      sku: "CNDL-BLK",
+      packSize: "Carton of 24",
+      bulkPricing: [
+        { minQty: 48, price: 400 },
+        { minQty: 120, price: 350 }
+      ]
     },
   ],
 };

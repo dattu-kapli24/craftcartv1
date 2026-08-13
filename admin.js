@@ -1,228 +1,278 @@
-import { getStoreData, saveStoreConfig, uploadImageToCloud, onAuthChange, logoutAdmin, getStoreIdFromUrl, getOwnedStores, deleteStoreData } from "./firebase-service.js";
-import { STORE_BLUEPRINTS } from "./blueprints.js";
+import { getStoreData, saveStoreConfig, onAuthChange, logoutAdmin, getStoreIdFromUrl, getOwnedStores, auth } from "./firebase-service.js";
 
-let currentConfig = null;
-let currentStoreId = getStoreIdFromUrl();
-let currentUser = null;
+(async function() {
+  let currentConfig = null;
+  let currentStoreId = getStoreIdFromUrl();
+  const $ = (id) => document.getElementById(id);
 
-const $ = (id) => document.getElementById(id);
-const sidebarList = $('sidebarStoreList');
-const adminForm = $('adminForm');
-const welcomeState = $('welcomeState');
-const viewStoreLink = $('viewStoreLink');
-const sidebar = $('adminSidebar');
-const layout = document.querySelector('.admin-layout');
-
-// 1. AUTH & INITIALIZATION
-onAuthChange(async (user) => {
-  if (!user) {
-    window.location.href = `/login.html`;
-  } else {
-    currentUser = user;
-    await refreshSidebar();
-
-    // Auto-load if store is in URL
-    if (currentStoreId && currentStoreId !== 'demo' && currentStoreId !== 'admin') {
-      fetchConfig(currentStoreId);
-    }
-    if (window.lucide) window.lucide.createIcons();
-  }
-});
-
-// Mobile Toggle Fix
-$('mobileMenuBtn').addEventListener('click', () => {
-  sidebar.classList.toggle('open');
-  layout.classList.toggle('sidebar-open');
-});
-
-async function refreshSidebar() {
-  const stores = await getOwnedStores(currentUser.uid);
-  sidebarList.innerHTML = '';
-
-  stores.forEach(s => {
-    const btn = document.createElement('button');
-    btn.className = `store-nav-item ${s.id === currentStoreId ? 'active' : ''}`;
-    btn.innerHTML = `
-      <div class="store-icon">${(s.name || s.id).charAt(0).toUpperCase()}</div>
-      <div class="store-info">
-        <strong>${s.name || s.id}</strong><br><small>Catalog</small>
-      </div>
-      <span class="delete-store-btn" data-id="${s.id}">&times;</span>
-    `;
-    btn.addEventListener('click', (e) => {
-      if (e.target.classList.contains('delete-store-btn')) {
-        handleDelete(e.target.dataset.id);
-        return;
+  onAuthChange(async (user) => {
+    if (!user) {
+      window.location.href = "/login.html";
+    } else {
+      const stores = await getOwnedStores(user.uid);
+      renderSidebar(stores);
+      if (currentStoreId && currentStoreId !== 'admin') {
+        loadConfig(currentStoreId);
+      } else if (stores.length > 0) {
+        loadConfig(stores[0].id);
       }
-      selectStore(s.id);
-    });
-    sidebarList.appendChild(btn);
+    }
   });
-}
 
-function selectStore(id) {
-  const newUrl = `${window.location.pathname}?store=${id}`;
-  window.history.pushState({path:newUrl},'',newUrl);
-  currentStoreId = id;
-  sidebar.classList.remove('open');
-  layout.classList.remove('sidebar-open');
-  fetchConfig(id);
-}
+  function renderSidebar(stores) {
+    const list = $("sidebarStoreList");
+    list.innerHTML = "";
+    stores.forEach(s => {
+      const btn = document.createElement('button');
+      btn.className = "store-nav-item" + (s.id === currentStoreId ? " active" : "");
+      btn.innerHTML = `<strong>${s.name || s.id}</strong>`;
+      btn.onclick = () => {
+        currentStoreId = s.id;
+        window.history.pushState({}, '', `?store=${s.id}`);
+        loadConfig(s.id);
+      };
+      list.appendChild(btn);
+    });
+  }
 
-async function handleDelete(id) {
-  if (confirm(`Delete store "${id}"?`)) {
-    showToast('Deleting...');
-    const res = await deleteStoreData(id);
-    if (res.success) {
-      showToast('Deleted');
-      if (currentStoreId === id) window.location.search = '';
-      else await refreshSidebar();
+  async function loadConfig(id) {
+    const data = await getStoreData(id);
+    if (data) {
+      currentConfig = data;
+      renderForm();
+      $("adminForm").hidden = false;
+      $("welcomeState").hidden = true;
+      if ($("viewStoreLink")) {
+        $("viewStoreLink").href = `/${id}`;
+        $("viewStoreLink").hidden = false;
+      }
     }
   }
-}
 
-// 2. DATA FETCHING (FAST LOAD)
-async function fetchConfig(id) {
-  // Use cached data for instant display
-  const cached = localStorage.getItem(`config_${id}`);
-  if (cached) {
-    currentConfig = JSON.parse(cached);
-    renderForm();
-    showEditor();
-  }
+  function renderForm() {
+    const s = currentConfig.store;
+    $("name").value = s.name || "";
+    $("tagline").value = s.tagline || "";
+    $("whatsappNumber").value = s.whatsappNumber || "";
+    $("currencySymbol").value = s.currencySymbol || "₹";
+    $("accentColor").value = s.accentColor || "#c96c8a";
+    $("accentColorDark").value = s.accentColorDark || "#8f4160";
+    $("storeType").value = s.storeType || "B2C";
 
-  const freshData = await getStoreData(id);
-  if (freshData) {
-    currentConfig = freshData;
-    localStorage.setItem(`config_${id}`, JSON.stringify(freshData));
-    renderForm();
-    showEditor();
-  } else if (!cached) {
-    showToast('Initializing store...');
-    currentConfig = { store: { name: id }, categories: ["All"], products: [] };
-    renderForm();
-    showEditor();
-  }
-}
-
-function showEditor() {
-  welcomeState.hidden = true;
-  adminForm.hidden = false;
-  viewStoreLink.hidden = false;
-  viewStoreLink.href = `/${currentStoreId}`;
-}
-
-// 3. RENDER UI
-function renderForm() {
-  $('name').value = currentConfig.store.name || '';
-  $('tagline').value = currentConfig.store.tagline || '';
-  $('whatsappNumber').value = currentConfig.store.whatsappNumber || '';
-  $('currencySymbol').value = currentConfig.store.currencySymbol || '₹';
-  $('accentColor').value = currentConfig.store.accentColor || '#d2691e';
-  $('accentColorDark').value = currentConfig.store.accentColorDark || '#8b4513';
-  renderCategories();
-  renderProducts();
-}
-
-function renderCategories() {
-  const list = $('categoriesList');
-  list.innerHTML = '';
-  currentConfig.categories.forEach((cat, index) => {
-    const tag = document.createElement('div');
-    tag.className = 'tag';
-    tag.innerHTML = `<span>${cat}</span><button type="button" class="remove-cat" data-index="${index}">&times;</button>`;
-    list.appendChild(tag);
-  });
-  list.querySelectorAll('.remove-cat').forEach(b => b.addEventListener('click', () => {
-    currentConfig.categories.splice(b.dataset.index, 1);
     renderCategories();
-  }));
-}
+    renderProducts();
+  }
 
-function renderProducts() {
-  const list = $('productsList');
-  list.innerHTML = '';
-  currentConfig.products.forEach((prod, index) => {
-    const div = document.createElement('div');
-    div.className = 'product-item';
-    div.innerHTML = `
-      <button type="button" class="remove-product" data-index="${index}">Remove</button>
-      <div class="form-group"><label>Name</label><input type="text" value="${prod.name}" class="p-name" data-index="${index}"></div>
-      <div class="form-row">
-        <div class="form-group"><label>Price</label><input type="number" value="${prod.price}" class="p-price" data-index="${index}"></div>
-        <div class="form-group"><label>MOQ</label><input type="number" value="${prod.moq || 1}" class="p-moq" data-index="${index}"></div>
-      </div>
-      <div class="form-group"><label>Image URL</label><input type="text" value="${prod.image}" class="p-img" data-index="${index}"></div>
-    `;
-    list.appendChild(div);
-  });
+  function renderCategories() {
+    const list = $("categoriesList");
+    list.innerHTML = "";
+    (currentConfig.categories || []).forEach((cat, idx) => {
+      const span = document.createElement("span");
+      span.className = "tag";
+      span.innerHTML = `${cat} <button type="button" onclick="window.removeCat(${idx})">&times;</button>`;
+      list.appendChild(span);
+    });
+  }
 
-  list.querySelectorAll('.p-name').forEach(el => el.addEventListener('change', e => currentConfig.products[e.target.dataset.index].name = e.target.value));
-  list.querySelectorAll('.p-price').forEach(el => el.addEventListener('change', e => currentConfig.products[e.target.dataset.index].price = parseFloat(e.target.value)));
-  list.querySelectorAll('.p-moq').forEach(el => el.addEventListener('change', e => currentConfig.products[e.target.dataset.index].moq = parseInt(e.target.value)));
-  list.querySelectorAll('.p-img').forEach(el => el.addEventListener('change', e => currentConfig.products[e.target.dataset.index].image = e.target.value));
-}
-
-// 4. BUTTON ACTIONS
-$('addProductBtn').addEventListener('click', () => {
-  currentConfig.products.push({ id: Date.now(), name: 'New Item', price: 0, category: 'All', inStock: true });
-  renderProducts();
-});
-
-$('addCategoryBtn').addEventListener('click', () => {
-  const val = $('newCategory').value.trim();
-  if (val && !currentConfig.categories.includes(val)) {
-    currentConfig.categories.push(val);
-    $('newCategory').value = '';
+  window.removeCat = (idx) => {
+    currentConfig.categories.splice(idx, 1);
     renderCategories();
+  };
+
+  $("addCategoryBtn").onclick = () => {
+    const val = $("newCategory").value.trim();
+    if (val) {
+      if (!currentConfig.categories) currentConfig.categories = [];
+      currentConfig.categories.push(val);
+      $("newCategory").value = "";
+      renderCategories();
+    }
+  };
+
+  function renderProducts() {
+    const list = $("productsList");
+    list.innerHTML = "";
+    const isB2B = $("storeType").value === "B2B";
+
+    (currentConfig.products || []).forEach((p, idx) => {
+      const card = document.createElement("div");
+      card.className = "admin-section product-edit-card";
+      card.style.position = "relative";
+      card.style.marginBottom = "20px";
+      card.style.padding = "20px";
+      card.style.border = "1px solid #e2e8f0";
+
+      let b2bSection = "";
+      if (isB2B) {
+        b2bSection = `
+          <div class="form-row" style="margin-top:15px; border-top: 1px solid #f1f5f9; padding-top: 15px;">
+            <div class="form-group">
+              <label>MOQ</label>
+              <input type="number" value="${p.moq || 0}" onchange="window.updateProd(${idx}, 'moq', parseInt(this.value))">
+            </div>
+            <div class="form-group">
+              <label>SKU</label>
+              <input type="text" value="${p.sku || ''}" onchange="window.updateProd(${idx}, 'sku', this.value)">
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:10px;">
+            <label>Bulk Pricing (JSON Array)</label>
+            <textarea rows="3" style="width:100%; font-family:monospace; font-size:0.8rem;" onchange="try{ window.updateProd(${idx}, 'bulkPricing', JSON.parse(this.value)); this.style.borderColor='#e2e8f0'; }catch(e){ this.style.borderColor='red'; }">${JSON.stringify(p.bulkPricing || [], null, 2)}</textarea>
+            <small style="color:#64748b">Format: [{"minQty": 10, "price": 800}]</small>
+          </div>
+        `;
+      }
+
+      card.innerHTML = `
+        <div style="display:flex; gap:15px;">
+           <img src="${p.image || ''}" class="product-preview-img" onerror="this.src='https://placehold.co/100x100?text=No+Image'">
+           <div style="flex:1;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Name</label>
+                  <input type="text" value="${p.name}" onchange="window.updateProd(${idx}, 'name', this.value)">
+                </div>
+                <div class="form-group">
+                  <label>Price</label>
+                  <input type="number" value="${p.price}" onchange="window.updateProd(${idx}, 'price', parseFloat(this.value))">
+                </div>
+              </div>
+              ${b2bSection}
+              <div style="margin-top:10px; display:flex; gap:10px;">
+                <button type="button" class="btn-secondary" style="font-size:0.7rem; padding:4px 8px;" onclick="window.deleteProd(${idx})">Delete</button>
+              </div>
+           </div>
+        </div>
+      `;
+      list.appendChild(card);
+    });
   }
-});
 
-adminForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  currentConfig.store.name = $('name').value;
-  currentConfig.store.whatsappNumber = $('whatsappNumber').value;
-  currentConfig.store.accentColor = $('accentColor').value;
-  currentConfig.store.accentColorDark = $('accentColorDark').value;
-  showToast('Saving...');
-  const res = await saveStoreConfig(currentStoreId, currentConfig);
-  if (res.success) {
-    localStorage.setItem(`config_${currentStoreId}`, JSON.stringify(currentConfig));
-    showToast('Saved!');
-    await refreshSidebar();
-  }
-});
+  $("storeType").onchange = () => {
+    currentConfig.store.storeType = $("storeType").value;
+    renderProducts();
+  };
 
-const handleCreate = () => {
-  const id = prompt("Unique ID (e.g. fashion):");
-  if (!id) return;
-  const type = prompt("Template: gifting, crochet, bakers, wholesale, or food", "gifting");
-  const bp = STORE_BLUEPRINTS[type.toLowerCase()] || STORE_BLUEPRINTS.gifting;
-  currentConfig = JSON.parse(JSON.stringify(bp));
-  currentStoreId = id.toLowerCase().replace(/[^a-z0-9]/g, '');
-  selectStore(currentStoreId);
-};
+  window.updateProd = (idx, key, val) => {
+    if (!currentConfig.products[idx]) return;
+    currentConfig.products[idx][key] = val;
+  };
 
-$('sidebarCreateBtn').addEventListener('click', handleCreate);
-$('mainCreateBtn').addEventListener('click', handleCreate);
+  window.deleteProd = (idx) => {
+    if (confirm("Delete this product?")) {
+      currentConfig.products.splice(idx, 1);
+      renderProducts();
+    }
+  };
 
-$('migrateBtn').addEventListener('click', async () => {
-  const type = prompt("Load data from: gifting, crochet, bakers, wholesale, or food?");
-  if (type && STORE_BLUEPRINTS[type.toLowerCase()]) {
-    currentConfig = JSON.parse(JSON.stringify(STORE_BLUEPRINTS[type.toLowerCase()]));
-    renderForm();
-    showToast(`Loaded ${type} data!`);
-  }
-});
+  $("addProductBtn").onclick = () => {
+    const newProd = {
+      id: "new-" + Date.now(),
+      name: "New Product",
+      price: 0,
+      image: "https://placehold.co/400x400?text=Product+Image",
+      category: currentConfig.categories[0] || "All"
+    };
+    if (!currentConfig.products) currentConfig.products = [];
+    currentConfig.products.push(newProd);
+    renderProducts();
+  };
 
-$('logoutBtn').addEventListener('click', async () => {
-  await logoutAdmin();
-  window.location.href = `/login.html`;
-});
+  $("adminForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = e.submitter || $("adminForm").querySelector('button[type="submit"]');
+    const originalText = btn.textContent;
 
-function showToast(msg) {
-  const toast = $('toast');
-  toast.textContent = msg;
-  toast.className = 'toast toast--show';
-  setTimeout(() => toast.className = 'toast', 3000);
-}
+    try {
+      btn.disabled = true;
+      btn.textContent = "Saving to Cloud...";
+
+      const s = currentConfig.store;
+      if ($("name")) s.name = $("name").value;
+      if ($("tagline")) s.tagline = $("tagline").value;
+      if ($("whatsappNumber")) s.whatsappNumber = $("whatsappNumber").value;
+      if ($("currencySymbol")) s.currencySymbol = $("currencySymbol").value;
+      if ($("accentColor")) s.accentColor = $("accentColor").value;
+      if ($("accentColorDark")) s.accentColorDark = $("accentColorDark").value;
+      if ($("storeType")) s.storeType = $("storeType").value;
+
+      console.log("Submitting config for store:", currentStoreId);
+      const res = await saveStoreConfig(currentStoreId, currentConfig);
+
+      if (res.success) {
+        alert("Changes saved to cloud successfully!");
+      } else {
+        alert("Error saving: " + (res.error || "Unknown error"));
+      }
+    } catch (err) {
+      console.error("Submit error:", err);
+      alert("A critical error occurred while saving: " + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  };
+
+  // RECOVERY BUTTON LOGIC
+  $("migrateBtn").textContent = "Restore Initial Data (Demo/Resin/Baker)";
+  $("migrateBtn").onclick = async () => {
+    if (!confirm("This will overwrite your cloud data with the initial templates. Proceed?")) return;
+
+    const initialData = window.STORE_CONFIG; // Source from local file
+    if (!initialData) return alert("Initial data not found in local file.");
+
+    const storesToRestore = ['demo', 'resinart', 'bakerscart'];
+    for (const id of storesToRestore) {
+      await saveStoreConfig(id, initialData);
+    }
+    alert("Data restored! Refreshing...");
+    window.location.reload();
+  };
+
+  $("logoutBtn").onclick = async () => { await logoutAdmin(); window.location.href = "/login.html"; };
+
+  // REPAIR ALL STORES LOGIC
+  $("repairAllBtn").onclick = async () => {
+    if (!confirm("This will scan all your stores, ensure they follow the new schema, and REMOVE B2B/Wholesale items from B2C stores. Proceed?")) return;
+
+    const user = auth.currentUser;
+    if (!user) return alert("You must be logged in.");
+
+    const stores = await getOwnedStores(user.uid);
+    let count = 0;
+
+    for (const s of stores) {
+      const config = await getStoreData(s.id);
+      if (config) {
+        // Ensure storeType exists
+        const type = config.store.storeType || "B2C";
+        config.store.storeType = type;
+
+        if (type === "B2C") {
+          // Remove items in Wholesale category or with MOQ > 1 or with Bulk Pricing
+          config.products = config.products.filter(p => {
+            const isWholesaleCat = p.category?.toLowerCase() === "wholesale";
+            const hasHighMOQ = p.moq > 1;
+            const hasBulkPricing = p.bulkPricing && p.bulkPricing.length > 0;
+            return !(isWholesaleCat || hasHighMOQ || hasBulkPricing);
+          });
+
+          // Remove "Wholesale" category from the categories list
+          config.categories = (config.categories || []).filter(c => c.toLowerCase() !== "wholesale");
+        } else {
+          // For B2B, just ensure fields are present
+          config.products = config.products.map(p => ({
+            ...p,
+            moq: p.moq || 1,
+            bulkPricing: p.bulkPricing || []
+          }));
+        }
+
+        await saveStoreConfig(s.id, config);
+        count++;
+      }
+    }
+    alert(`Successfully repaired and cleaned ${count} stores.`);
+    window.location.reload();
+  };
+})();
