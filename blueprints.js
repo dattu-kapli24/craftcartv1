@@ -59,15 +59,15 @@ export const STORE_BLUEPRINTS = {
       { id: "prod_003", name: "Football toy set", price: 279, category: "Cake Toppers & Decor", image: "/products/football-topper.jpg", inStock: true, moq: 1 },
       { id: "prod_004", name: "Edible Glue", price: 85, category: "Baking Ingredients & Additives", image: "/products/edible-glue.jpg", inStock: true, moq: 1 },
       { id: "prod_005", name: "Sprinkles blue mixed-55gram bottle", price: 54, category: "Sprinkles & Edible Decor", image: "/products/blue-sprinkles.jpg", inStock: true, moq: 1 },
+      { id: "prod_010", name: "Gold sugarballs big & small", price: 54, category: "Sprinkles & Edible Decor", image: "/products/gold-sugarballs.jpg", inStock: true, moq: 1 },
+      { id: "prod_011", name: "Sugarballs silver big & small", price: 54, category: "Sprinkles & Edible Decor", image: "/products/silver-sugarballs.jpg", inStock: true, moq: 1 },
       { id: "prod_006", name: "Geometric Cake Stand-Gold", price: 690, category: "Cake Stands & Displays", image: "/products/geometric-stand.jpg", inStock: true, moq: 1 },
       { id: "prod_007", name: "Cake seperater round", price: 499, category: "Cake Stands & Displays", image: "/products/cake-separator.jpg", inStock: true, moq: 1 },
       { id: "prod_008", name: "Mouse cups with lid", price: 14, category: "Packaging & Cups", image: "/products/mousse-cups.jpg", inStock: true, moq: 10 },
-      { id: "prod_009", name: "Brownie tray aluminum", price: 155, category: "Baking Pans & Trays", image: "/products/brownie-tray.jpg", inStock: true, moq: 1 },
-      { id: "prod_010", name: "Gold sugarballs big & small", price: 54, category: "Sprinkles & Edible Decor", image: "/products/gold-sugarballs.jpg", inStock: true, moq: 1 },
-      { id: "prod_011", name: "Sugarballs silver big & small", price: 54, category: "Sprinkles & Edible Decor", image: "/products/silver-sugarballs.jpg", inStock: true, moq: 1 },
       { id: "prod_012", name: "Girl front topper 10pcs packets", price: 59, category: "Cake Toppers & Decor", image: "/products/girl-topper.jpg", inStock: true, moq: 1 },
+      { id: "prod_014", name: "Hbd acrylic toppers", price: 29, category: "Cake Toppers & Decor", image: "/products/hbd-topper.jpg", inStock: true, moq: 1 },
       { id: "prod_013", name: "Coin toppers per pcs 2.5inch", price: 17, category: "Cake Toppers & Decor", image: "/products/coin-toppers.jpg", inStock: true, moq: 1 },
-      { id: "prod_014", name: "Hbd acrylic toppers", price: 29, category: "Cake Toppers & Decor", image: "/products/hbd-topper.jpg", inStock: true, moq: 1 }
+      { id: "prod_009", name: "Brownie tray aluminum", price: 155, category: "Baking Pans & Trays", image: "/products/brownie-tray.jpg", inStock: true, moq: 1 }
     ]
   }
 };
