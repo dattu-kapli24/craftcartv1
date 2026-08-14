@@ -45,7 +45,7 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
     const { store, categories, products } = config;
     const CURRENCY = store.currencySymbol || "₹";
     const STORAGE_KEY = `cart_${storeId}`;
-    const isBakeryStore = store.isBakeryCustom || store.name?.toLowerCase().includes("whisk") || store.name?.toLowerCase().includes("cake") || categories.some(c => c.toLowerCase().includes("cake"));
+    const isBakeryStore = Boolean(store.isBakeryCustom || storeId === "richwhisk");
 
     /* ---------- 2. App state ---------- */
     let cart = loadCart();
@@ -66,6 +66,7 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
     const brandLogo = $("brandLogo");
     const storeNameEl = $("storeName");
     const storeTaglineEl = $("storeTagline");
+    const footerNameEl = $("footerName");
     const searchInput = $("searchInput");
     const cartBtn = $("cartBtn");
     const cartCount = $("cartCount");
@@ -126,10 +127,39 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
     function applyBranding() {
       storeNameEl.textContent = store.name;
       storeTaglineEl.textContent = store.tagline || "";
+      if (footerNameEl) footerNameEl.textContent = store.name;
       if (brandLogo) brandLogo.textContent = store.name.charAt(0).toUpperCase();
       document.documentElement.style.setProperty("--accent", store.accentColor || "#db2777");
       document.documentElement.style.setProperty("--accent-dark", store.accentColorDark || "#9d174d");
-      document.title = `${store.name} — ${store.tagline || 'CraftCart'}`;
+      document.title = `${store.name} — ${store.tagline || 'OrderSpot'}`;
+
+      // Set checkout form placeholders for B2B vs standard stores
+      const storeType = store.storeType || "B2C";
+      const custName = $("custName");
+      const custPhone = $("custPhone");
+      const custAddress = $("custAddress");
+      const custPin = $("custPin");
+      const custNotes = $("custNotes");
+
+      if (storeType === "B2B") {
+        if (custName) custName.placeholder = "Business / Contact Name *";
+        if (custPhone) custPhone.placeholder = "Phone Number *";
+        if (custAddress) custAddress.placeholder = "Delivery Address / Warehouse Address *";
+        if (custPin) custPin.placeholder = "Pincode / City *";
+        if (custNotes) custNotes.placeholder = "Notes (GST No., PO Number, Delivery instructions, etc.)";
+      } else if (isBakeryStore) {
+        if (custName) custName.placeholder = "Your Name *";
+        if (custPhone) custPhone.placeholder = "Phone Number *";
+        if (custAddress) custAddress.placeholder = "Delivery Address *";
+        if (custPin) custPin.placeholder = "Pincode / City *";
+        if (custNotes) custNotes.placeholder = "Notes (delivery date, special instructions, celebration timing)";
+      } else {
+        if (custName) custName.placeholder = "Your Name *";
+        if (custPhone) custPhone.placeholder = "Phone Number *";
+        if (custAddress) custAddress.placeholder = "Delivery Address *";
+        if (custPin) custPin.placeholder = "Pincode / City *";
+        if (custNotes) custNotes.placeholder = "Notes for the artist (any custom colours, dates or gift message)";
+      }
 
       // Highlight active switcher pill
       const switcherPills = document.querySelectorAll(".switcher-pill");
@@ -175,10 +205,13 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
       list.forEach((p) => {
         const card = document.createElement("article");
         card.className = "card";
-        const isCustom = p.isCustomizable || isBakeryStore || (p.category && p.category.toLowerCase().includes("cake"));
+        const moq = getEffectiveMOQ(p, storeType);
+
+        // Custom cake logic only applies to isBakeryStore items marked customizable
+        const isCustom = isBakeryStore && Boolean(p.isCustomizable);
 
         let bulkPricingHtml = '';
-        if (storeType === 'B2B' && p.bulkPricing) {
+        if (storeType === 'B2B' && p.bulkPricing && p.bulkPricing.length > 0) {
           bulkPricingHtml = `
             <div class="bulk-pricing-table">
               <strong>Bulk Pricing:</strong><br>
@@ -189,12 +222,12 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
 
         card.innerHTML = `
           <div class="card__img-wrap">
-            <img class="card__img" src="${p.image}" alt="${p.name}" onerror="this.src='https://placehold.co/400x400?text=Cake+Image'">
-            ${isCustom ? `<span class="card__badge" style="background:#db2777; color:#fff;">Customizable</span>` : (storeType === 'B2B' && p.moq ? `<span class="card__badge">MOQ: ${p.moq}</span>` : '')}
+            <img class="card__img" src="${p.image}" alt="${p.name}" onerror="this.src='https://placehold.co/400x400?text=Product+Image'">
+            ${storeType === 'B2B' && p.moq ? `<span class="card__badge">MOQ: ${p.moq}</span>` : (isCustom ? `<span class="card__badge" style="background:#db2777; color:#fff;">Customizable</span>` : '')}
           </div>
           <div class="card__body">
             <h3 class="card__title">${p.name}</h3>
-            ${p.description ? `<p class="card__desc" style="font-size:0.8rem; color:#64748b; margin-top:2px;">${p.description}</p>` : ''}
+            ${storeType === 'B2B' && p.sku ? `<p class="card__desc">SKU: ${p.sku}</p>` : (p.description ? `<p class="card__desc" style="font-size:0.8rem; color:#64748b; margin-top:2px;">${p.description}</p>` : '')}
             <p class="card__price">
               <span class="card__sell">${money(p.price)}</span>
               ${p.packSize ? `<span class="card__was" style="text-decoration:none">/ ${p.packSize}</span>` : ''}
@@ -468,29 +501,57 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
       cartCount.hidden = count === 0;
     }
 
+    function updateCartQty(id, delta) {
+      const item = cart.find(i => i.id === id);
+      if (!item) return;
+      const p = findProduct(id);
+      const moq = getEffectiveMOQ(p, store.storeType || 'B2C');
+      item.qty += delta;
+      if (item.qty < moq) {
+        if (delta < 0) {
+          cart = cart.filter(i => i.id !== id);
+        } else {
+          item.qty = moq;
+        }
+      }
+      saveCart();
+      renderCart();
+      updateBadge();
+    }
+    window.updateQty = updateCartQty;
+
     function renderCart() {
       cartItemsEl.innerHTML = "";
       const storeType = store.storeType || "B2C";
+
+      if (cart.length === 0) {
+        cartItemsEl.innerHTML = '<div class="cart__empty">Your cart is empty</div>';
+        cartTotalEl.textContent = money(0);
+        return;
+      }
 
       cart.forEach((i) => {
         const p = findProduct(i.id);
         if (!p) return;
 
         const unitPrice = calculateUnitPrice(p, i.qty, storeType);
+        const itemTotal = unitPrice * i.qty;
         const row = document.createElement("div");
         row.className = "cart-item";
         row.innerHTML = `
-          <img class="cart-item__img" src="${p.image}" alt="${p.name}">
+          <img src="${p.image}" class="cart-item__img" alt="${p.name}">
           <div class="cart-item__info">
-            <div class="cart-item__name">${p.name}</div>
-            <div class="cart-item__price">${money(unitPrice)}</div>
-            <div class="cart-item__qty">
-              <button class="cart-item__btn" onclick="window.updateQty('${i.id}', -1)">-</button>
-              <span>${i.qty}</span>
-              <button class="cart-item__btn" onclick="window.updateQty('${i.id}', 1)">+</button>
-            </div>
+            <h4 class="cart-item__name">${p.name}</h4>
+            <div class="cart-item__sub">${money(unitPrice)} / unit</div>
+            ${storeType === 'B2B' && p.sku ? `<div class="cart-item__sub">SKU: ${p.sku}</div>` : ''}
           </div>
-          <button class="cart-item__remove" onclick="window.updateQty('${i.id}', -${i.qty})">Remove</button>
+          <div class="cart-item__total">${money(itemTotal)}</div>
+          <div class="qty">
+            <button class="qty__btn" type="button" onclick="window.updateQty('${i.id}', -1)">−</button>
+            <span class="qty__num">${i.qty}</span>
+            <button class="qty__btn" type="button" onclick="window.updateQty('${i.id}', 1)">+</button>
+          </div>
+          <button class="cart-item__remove" type="button" onclick="window.updateQty('${i.id}', -${i.qty})">Remove</button>
         `;
         cartItemsEl.appendChild(row);
       });
@@ -500,6 +561,22 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
     function placeOrder(e) {
       e.preventDefault();
       const storeType = store.storeType || "B2C";
+
+      if (!cart.length) {
+        showToast("Your cart is empty");
+        return;
+      }
+
+      const name = $("custName")?.value.trim();
+      const phone = $("custPhone")?.value.trim();
+      const address = $("custAddress")?.value.trim();
+      const pin = $("custPin")?.value.trim();
+      const notes = $("custNotes")?.value.trim();
+
+      if (!name || !phone || !address || !pin) {
+        showToast("Please fill all required details");
+        return;
+      }
 
       if (storeType === 'B2B') {
         for (const item of cart) {
@@ -521,20 +598,27 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
         return line;
       });
 
-      const text = `New Order from ${store.name} (${storeType}):\n\n${lines.join("\n")}\n\nTotal: ${money(cartTotal())}\n\nCustomer Details:\nName: ${$("custName").value}\nPhone: ${$("custPhone").value}\nAddress: ${$("custAddress").value}\nNotes: ${$("custNotes").value}`;
+      const orderTitle = storeType === 'B2B'
+        ? `New Wholesale B2B Order from ${store.name}:`
+        : `New Order from ${store.name}:`;
+
+      const text = [
+        orderTitle,
+        ``,
+        lines.join("\n"),
+        ``,
+        `Total: ${money(cartTotal())}`,
+        ``,
+        `Customer Details:`,
+        `Name: ${name}`,
+        `Phone: ${phone}`,
+        `Address: ${address}`,
+        `Pincode: ${pin}`,
+        notes ? `Notes: ${notes}` : ""
+      ].filter(Boolean).join("\n");
 
       window.open(`https://wa.me/${store.whatsappNumber}?text=${encodeURIComponent(text)}`, "_blank");
     }
-
-    window.updateQty = (id, delta) => {
-      const idx = cart.findIndex((i) => i.id === id);
-      if (idx === -1) return;
-      cart[idx].qty += delta;
-      if (cart[idx].qty <= 0) cart.splice(idx, 1);
-      saveCart();
-      updateBadge();
-      renderCart();
-    };
 
     /* ---------- Init ---------- */
     searchInput.oninput = () => { searchQuery = searchInput.value; renderGrid(); };
