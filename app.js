@@ -1,4 +1,4 @@
-import { getStoreData, getStoreIdFromUrl } from "./firebase-service.js";
+import { getStoreData, getStoreIdFromUrl, onAuthChange } from "./firebase-service.js";
 import { getEffectiveMOQ, calculateUnitPrice, calculateItemTotal } from "./utils/pricing.js";
 import { STORE_BLUEPRINTS } from "./blueprints.js";
 
@@ -46,6 +46,21 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
     const CURRENCY = store.currencySymbol || "₹";
     const STORAGE_KEY = `cart_${storeId}`;
     const isBakeryStore = Boolean(store.isBakeryCustom || storeId === "richwhisk");
+
+    /* ---------- 1.1 Auth Check for Preview Bar ---------- */
+    const switcherBar = $("storeSwitcherBar");
+    if (switcherBar) {
+      // Hide by default
+      switcherBar.style.display = "none";
+      // Show only if admin is logged in
+      onAuthChange((user) => {
+        if (user) {
+          switcherBar.style.display = "block";
+        } else {
+          switcherBar.style.display = "none";
+        }
+      });
+    }
 
     /* ---------- 2. App state ---------- */
     let cart = loadCart();
