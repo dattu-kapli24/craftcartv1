@@ -14,7 +14,7 @@ export function getStoreIdFromUrl() {
   const reserved = ["admin", "login", "admin.html", "login.html", "index.html"];
   if (path[0] && !reserved.includes(path[0].toLowerCase())) return path[0];
   const params = new URLSearchParams(window.location.search);
-  return params.get('store') || 'demo';
+  return params.get('store') || 'richwhisk';
 }
 
 export { auth };

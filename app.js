@@ -129,7 +129,18 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
       if (brandLogo) brandLogo.textContent = store.name.charAt(0).toUpperCase();
       document.documentElement.style.setProperty("--accent", store.accentColor || "#db2777");
       document.documentElement.style.setProperty("--accent-dark", store.accentColorDark || "#9d174d");
-      document.title = `${store.name} — Bespoke Bakery`;
+      document.title = `${store.name} — ${store.tagline || 'CraftCart'}`;
+
+      // Highlight active switcher pill
+      const switcherPills = document.querySelectorAll(".switcher-pill");
+      switcherPills.forEach(pill => {
+        const pStore = pill.getAttribute("data-store");
+        if (pStore === storeId || (storeId === "demo" && pStore === "richwhisk")) {
+          pill.classList.add("switcher-pill--active");
+        } else {
+          pill.classList.remove("switcher-pill--active");
+        }
+      });
     }
 
     function renderPills() {

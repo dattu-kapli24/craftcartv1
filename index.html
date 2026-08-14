@@ -15,6 +15,31 @@
 </head>
 <body>
 
+  <!-- ===== Storefront Switcher Bar ===== -->
+  <div class="store-switcher-bar" id="storeSwitcherBar">
+    <div class="store-switcher-inner">
+      <div class="switcher-badge">
+        <span class="live-dot"></span>
+        <span>Store Preview:</span>
+      </div>
+      <div class="switcher-pills" id="switcherPills">
+        <a href="?store=richwhisk" class="switcher-pill" data-store="richwhisk" id="pillRichWhisk">
+          🎂 Rich Whisk (Custom Bakery)
+        </a>
+        <a href="?store=bakerswholesale" class="switcher-pill switcher-pill--b2b" data-store="bakerswholesale" id="pillBakersWholesale">
+          📦 Bakers Wholesale (B2B)
+        </a>
+        <a href="?store=resinart" class="switcher-pill" data-store="resinart" id="pillResinArt">
+          🌸 Resin Art (B2C)
+        </a>
+      </div>
+      <a href="/admin.html" class="switcher-admin-btn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12 2a5 5 0 105 5 5 5 0 00-5-5zm0 8a3 3 0 113-3 3 3 0 01-3 3zm9 11v-1a7 7 0 00-7-7h-4a7 7 0 00-7 7v1h2v-1a5 5 0 015-5h4a5 5 0 015 5v1z"/></svg>
+        Admin Dashboard
+      </a>
+    </div>
+  </div>
+
   <!-- ===== Header ===== -->
   <header class="header" id="header">
     <div class="header__inner">

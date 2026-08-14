@@ -808,3 +808,98 @@ input, textarea { font-family: inherit; font-size: 1rem; }
   box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45);
 }
 
+/* =============================================================
+ *  Storefront Switcher Bar (Demo Mode)
+ * ============================================================= */
+.store-switcher-bar {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  border-bottom: 1px solid #1e293b;
+  position: relative;
+  z-index: 50;
+}
+.store-switcher-inner {
+  max-width: var(--maxw, 1100px);
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.switcher-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+}
+.switcher-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.switcher-pill {
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 0.75rem;
+  transition: all 0.2s ease;
+  border: 1px solid #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.switcher-pill:hover {
+  background: #334155;
+  color: #fff;
+}
+.switcher-pill.switcher-pill--active {
+  background: #db2777;
+  color: #fff;
+  border-color: #f472b6;
+  box-shadow: 0 2px 8px rgba(219, 39, 119, 0.4);
+}
+.switcher-pill.switcher-pill--b2b.switcher-pill--active {
+  background: #d97706;
+  border-color: #f59e0b;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.4);
+}
+.switcher-admin-btn {
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #cbd5e1;
+  font-weight: 600;
+  font-size: 0.75rem;
+  border: 1px solid #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+}
+.switcher-admin-btn:hover {
+  background: #334155;
+  color: #fff;
+}
+
