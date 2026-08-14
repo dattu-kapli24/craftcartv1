@@ -225,13 +225,15 @@ input, textarea { font-family: inherit; font-size: 1rem; }
 
 .card__img-wrap {
   position: relative;
-  aspect-ratio: 3 / 4;
-  background: #eef0f3;
+  aspect-ratio: 1 / 1;
+  background: #f8fafc;
   overflow: hidden;
 }
 .card__img {
   width: 100%; height: 100%;
   object-fit: cover;
+  object-position: center 20%;
+  max-height: 250px;
   transition: transform .4s ease;
 }
 .card:hover .card__img { transform: scale(1.05); }
