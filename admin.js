@@ -214,11 +214,48 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
     }
   };
 
+  // CREATE NEW STORE LOGIC
+  const handleCreateStore = async () => {
+    const blueprintKeys = Object.keys(STORE_BLUEPRINTS);
+    const storeIdInput = prompt("Enter a unique URL slug for the new store (e.g. richwhisk, sweetcreations):", "richwhisk");
+    if (!storeIdInput) return;
+
+    const cleanStoreId = storeIdInput.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
+    if (!cleanStoreId) {
+      alert("Invalid store slug. Use letters, numbers, and dashes only.");
+      return;
+    }
+
+    const bpChoice = prompt(
+      `Choose a starter template for "${cleanStoreId}":\n\n` +
+      `- richwhisk: Rich Whisk Custom Bakery (100% Customized Bespoke Cakes)\n` +
+      `- bakerswholesale: Bakers Wholesale World (B2B)\n` +
+      `- resinart: Shridevi Resin Art (B2C)\n` +
+      `- bakers: Bakers World (B2C)\n\n` +
+      `Enter template key:`,
+      "richwhisk"
+    );
+
+    const templateKey = (bpChoice && STORE_BLUEPRINTS[bpChoice.trim()]) ? bpChoice.trim() : "richwhisk";
+    const starterConfig = STORE_BLUEPRINTS[templateKey] || STORE_BLUEPRINTS.richwhisk;
+
+    const res = await saveStoreConfig(cleanStoreId, starterConfig);
+    if (res.success) {
+      alert(`Store "${cleanStoreId}" created successfully! Loading editor...`);
+      window.location.href = `/admin.html?store=${cleanStoreId}`;
+    } else {
+      alert("Error creating store: " + res.error);
+    }
+  };
+
+  if ($("sidebarCreateBtn")) $("sidebarCreateBtn").onclick = handleCreateStore;
+  if ($("mainCreateBtn")) $("mainCreateBtn").onclick = handleCreateStore;
+
   // RECOVERY BUTTON LOGIC
   $("migrateBtn").textContent = "Apply Blueprint Template";
   $("migrateBtn").onclick = async () => {
     const blueprintKeys = Object.keys(STORE_BLUEPRINTS);
-    const choice = prompt(`Enter blueprint key to apply to current store (${currentStoreId}):\nOptions: ${blueprintKeys.join(', ')}`, 'bakerswholesale');
+    const choice = prompt(`Enter blueprint key to apply to current store (${currentStoreId}):\nOptions: ${blueprintKeys.join(', ')}`, 'richwhisk');
 
     if (!choice || !STORE_BLUEPRINTS[choice]) {
       if (choice) alert("Invalid blueprint key.");

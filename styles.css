@@ -531,3 +531,280 @@ input, textarea { font-family: inherit; font-size: 1rem; }
     margin-top: 8px;
   }
 }
+
+/* =============================================================
+ *  Custom Cake Ordering Modal & Bakery UI
+ * ============================================================= */
+.cake-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.cake-modal-backdrop.cake-modal--open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.cake-modal {
+  background: #fff;
+  width: 100%;
+  max-width: 820px;
+  max-height: 90vh;
+  border-radius: 20px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #fce7f3;
+  transform: translateY(20px) scale(0.98);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cake-modal-backdrop.cake-modal--open .cake-modal {
+  transform: translateY(0) scale(1);
+}
+.cake-modal__header {
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #fff1f2 0%, #fdf2f8 50%, #fffbeb 100%);
+  border-bottom: 1px solid #fce7f3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cake-modal__title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cake-modal__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--accent, #db2777);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  box-shadow: 0 4px 10px rgba(219, 39, 119, 0.25);
+}
+.cake-modal__title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+.cake-modal__subtitle {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+.cake-modal__close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 1.4rem;
+  transition: all 0.2s;
+}
+.cake-modal__close:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+.cake-modal__body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.cake-preview-banner {
+  display: flex;
+  gap: 16px;
+  padding: 14px;
+  background: #fdf4f8;
+  border: 1px solid #fbcfe8;
+  border-radius: 14px;
+  align-items: center;
+}
+.cake-preview-banner img {
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid #f472b6;
+}
+.cake-preview-banner h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #831843;
+}
+.cake-preview-banner p {
+  font-size: 0.8rem;
+  color: #9d174d;
+}
+.cake-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 700px) {
+  .cake-form-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+.cake-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cake-field-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #334155;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cake-field-label small {
+  font-weight: normal;
+  color: #64748b;
+}
+.weight-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.weight-btn {
+  padding: 8px 4px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  transition: all 0.2s;
+  color: #334155;
+}
+.weight-btn:hover {
+  border-color: #f472b6;
+  background: #fff1f2;
+}
+.weight-btn.weight-btn--active {
+  background: var(--accent, #db2777);
+  color: #fff;
+  border-color: var(--accent, #db2777);
+  box-shadow: 0 3px 8px rgba(219, 39, 119, 0.25);
+}
+.dietary-toggle-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.dietary-btn {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.dietary-btn.dietary-btn--active {
+  border-color: #10b981;
+  background: #ecfdf5;
+  color: #065f46;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+.dietary-btn.dietary-btn--egg.dietary-btn--active {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+.shape-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.shape-btn {
+  padding: 8px 4px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  transition: all 0.2s;
+}
+.shape-btn.shape-btn--active {
+  background: #fdf2f8;
+  border-color: #db2777;
+  color: #831843;
+  box-shadow: 0 0 0 2px rgba(219, 39, 119, 0.15);
+}
+.ref-upload-card {
+  border: 2px dashed #f472b6;
+  background: #fff1f2;
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ref-upload-card:hover {
+  background: #fce7f3;
+}
+.cake-price-summary-box {
+  background: linear-gradient(135deg, #fff1f2 0%, #fdf2f8 100%);
+  border: 1px solid #fbcfe8;
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cake-price-summary-box .price-tag {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #831843;
+}
+.cake-modal__footer {
+  padding: 16px 24px;
+  background: #fff;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.btn-whatsapp-custom {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  font-weight: 700;
+  padding: 12px 24px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+  transition: all 0.2s;
+}
+.btn-whatsapp-custom:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45);
+}
+

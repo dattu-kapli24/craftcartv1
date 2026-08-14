@@ -42,6 +42,93 @@ export const STORE_BLUEPRINTS = {
       { id: "b2", name: "Cookie Box", price: 600, category: "Cookies", image: "/products/bakers-cupcake-box.jpg", inStock: true }
     ]
   },
+  richwhisk: {
+    store: {
+      name: "Rich Whisk",
+      tagline: "Bespoke & 100% Customized Artisanal Cakes",
+      whatsappNumber: "918073511215",
+      currencySymbol: "₹",
+      accentColor: "#db2777",
+      accentColorDark: "#9d174d",
+      storeType: "B2C",
+      isBakeryCustom: true
+    },
+    categories: ["All", "Custom Cakes", "Theme Cakes", "Celebration Tiers", "Dessert Hampers"],
+    products: [
+      {
+        id: "rw_01",
+        name: "Lavender Butterfly Tier Celebration Cake",
+        price: 1850,
+        category: "Celebration Tiers",
+        image: "/products/rich-whisk-butterfly-tier.jpg",
+        description: "Artisan two-tier pastel lavender & white celebration cake decorated with 3D butterflies, fresh florist roses, and custom 3D acrylic text.",
+        inStock: true,
+        isCustomizable: true,
+        baseWeight: "1 kg",
+        flavors: ["Belgium Chocolate Truffle", "Vanilla Berry", "Biscoff Caramel", "Hazelnut Praline", "Custom Flavor Request"]
+      },
+      {
+        id: "rw_02",
+        name: "Pastel Pink Balloon Sphere & Girl Cake",
+        price: 1450,
+        category: "Theme Cakes",
+        image: "/products/rich-whisk-balloon-girl.jpg",
+        description: "Chic luxury pastel pink frosted cake adorned with metallic gold and pink sphere balloon toppers and artistic silhouette.",
+        inStock: true,
+        isCustomizable: true,
+        baseWeight: "1 kg",
+        flavors: ["Belgium Chocolate Truffle", "Vanilla Berry", "Biscoff Caramel", "Hazelnut Praline", "Custom Flavor Request"]
+      },
+      {
+        id: "rw_03",
+        name: "Handcrafted 3D Cute Tooth Birthday Cake",
+        price: 1350,
+        category: "Custom Cakes",
+        image: "/products/rich-whisk-cute-tooth.jpg",
+        description: "Delightful custom sculpted smiling tooth character with toothbrush, gold crown, satin fondant ribbon, and personalized name plaque.",
+        inStock: true,
+        isCustomizable: true,
+        baseWeight: "1 kg",
+        flavors: ["Belgium Chocolate Truffle", "Vanilla Berry", "Biscoff Caramel", "Hazelnut Praline", "Custom Flavor Request"]
+      },
+      {
+        id: "rw_04",
+        name: "Pastel Rainbow & Giraffe Celebration Cake",
+        price: 1550,
+        category: "Theme Cakes",
+        image: "/products/rich-whisk-giraffe-rainbow.jpg",
+        description: "Whimsical pastel rainbow arch cake with adorable illustrated giraffe topper, golden age crown, and sprinkle pearls.",
+        inStock: true,
+        isCustomizable: true,
+        baseWeight: "1 kg",
+        flavors: ["Belgium Chocolate Truffle", "Vanilla Berry", "Biscoff Caramel", "Hazelnut Praline", "Custom Flavor Request"]
+      },
+      {
+        id: "rw_05",
+        name: "Velvet Bloom Dessert & Fresh Flowers Hamper",
+        price: 1200,
+        category: "Dessert Hampers",
+        image: "/products/rich-whisk-velvet-hamper.jpg",
+        description: "Luxury gift hamper with two gourmet layered dessert jars tied with satin ribbon and freshly plucked floral arrangement.",
+        inStock: true,
+        isCustomizable: true,
+        baseWeight: "Hamper Set",
+        flavors: ["Belgium Chocolate Truffle", "Vanilla Berry", "Red Velvet Cream Cheese", "Biscoff Caramel"]
+      },
+      {
+        id: "rw_06",
+        name: "100% Bespoke Custom Cake (From Reference)",
+        price: 1600,
+        category: "Custom Cakes",
+        image: "/products/rich-whisk-butterfly-tier.jpg",
+        description: "Upload your dream design or reference image, pick tiers, custom sizes, bespoke dietary requirements, and tailor-made themes.",
+        inStock: true,
+        isCustomizable: true,
+        baseWeight: "1 kg",
+        flavors: ["Belgium Chocolate Truffle", "Vanilla Berry", "Biscoff Caramel", "Hazelnut Praline", "Custom Flavor Request"]
+      }
+    ]
+  },
   bakerswholesale: {
     store: {
       name: "Bakers Wholesale World",

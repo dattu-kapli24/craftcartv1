@@ -1,0 +1,6 @@
+{
+  "name": "CraftCart",
+  "description": "CraftCart - An e-commerce platform for handcrafted goods and artisan creations",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
