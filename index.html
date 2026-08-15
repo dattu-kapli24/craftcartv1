@@ -105,21 +105,54 @@
     <div class="cart__body" id="cartItems"></div>
 
     <div class="cart__foot" id="cartFoot">
-      <div class="cart__total">
-        <span>Total</span>
-        <span id="cartTotal">₹0</span>
+      <div class="cart-summary-sticky" id="cartSummarySticky">
+        <span>Cart Summary (<span id="summaryCount">0</span> items)</span>
+        <span id="summaryTotal">₹0</span>
       </div>
 
       <form id="checkoutForm" class="checkout-form" novalidate>
-        <input type="text" id="custName" placeholder="Your Name *" required autocomplete="name" />
-        <input type="tel" id="custPhone" placeholder="Phone Number *" required autocomplete="tel" />
-        <textarea id="custAddress" placeholder="Delivery Address *" rows="2" required></textarea>
-        <input type="text" id="custPin" placeholder="Pincode / City *" required autocomplete="postal-code" />
-        <textarea id="custNotes" placeholder="Notes for the artist (any custom colours, dates or gift message)" rows="2"></textarea>
-        <button type="submit" class="btn-whatsapp" id="placeOrderBtn">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 00-8.6 15l-1.4 5 5.1-1.3A10 10 0 1012 2zm0 18a8 8 0 01-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1112 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8 1-.3.2-.5.1a6.5 6.5 0 01-1.9-1.2 7.2 7.2 0 01-1.3-1.7c-.1-.2 0-.4.1-.5l.4-.4.2-.4v-.4l-.8-1.9c-.2-.5-.4-.4-.5-.4h-.5a1 1 0 00-.7.3 3 3 0 00-.9 2.2 5.2 5.2 0 001.1 2.7 11.8 11.8 0 004.5 4 5.3 5.3 0 002.4.5 2.6 2.6 0 001.7-1.2 2.1 2.1 0 00.2-1.2c-.1-.1-.3-.2-.5-.3z" fill="currentColor"/></svg>
-          Place Order via WhatsApp
-        </button>
+        <div class="form-grid">
+          <!-- Row 1 -->
+          <div class="form-group col-span-2">
+            <input type="text" id="custName" placeholder="Business Name / Contact Name *" required autocomplete="name" class="compact-input" />
+          </div>
+
+          <!-- Row 2 -->
+          <div class="form-group">
+            <input type="tel" id="custPhone" placeholder="Phone Number *" required autocomplete="tel" class="compact-input" />
+          </div>
+          <div class="form-group">
+            <input type="date" id="deliveryDate" required class="compact-input" title="Delivery Date" />
+          </div>
+
+          <!-- Row 3 -->
+          <div class="form-group">
+            <input type="text" id="custPin" placeholder="City / Pincode *" required autocomplete="postal-code" class="compact-input" />
+          </div>
+          <div class="form-group">
+            <input type="text" id="gstin" placeholder="GSTIN (Optional)" class="compact-input" />
+          </div>
+
+          <!-- Row 4 -->
+          <div class="form-group col-span-2">
+            <input type="text" id="custAddress" placeholder="Delivery Address *" required class="compact-input" />
+          </div>
+        </div>
+
+        <!-- Collapsible Notes -->
+        <div class="notes-collapsible">
+          <button type="button" id="toggleNotesBtn" class="notes-toggle-btn">+ Add Order Note / PO Number</button>
+          <div id="notesContainer" class="notes-content" hidden>
+            <textarea id="custNotes" placeholder="Enter special instructions or Purchase Order number..." rows="2" class="compact-textarea"></textarea>
+          </div>
+        </div>
+
+        <div class="checkout-actions-sticky">
+          <button type="submit" class="btn-whatsapp" id="placeOrderBtn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 00-8.6 15l-1.4 5 5.1-1.3A10 10 0 1012 2zm0 18a8 8 0 01-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1112 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8 1-.3.2-.5.1a6.5 6.5 0 01-1.9-1.2 7.2 7.2 0 01-1.3-1.7c-.1-.2 0-.4.1-.5l.4-.4.2-.4v-.4l-.8-1.9c-.2-.5-.4-.4-.5-.4h-.5a1 1 0 00-.7.3 3 3 0 00-.9 2.2 5.2 5.2 0 001.1 2.7 11.8 11.8 0 004.5 4 5.3 5.3 0 002.4.5 2.6 2.6 0 001.7-1.2 2.1 2.1 0 00.2-1.2c-.1-.1-.3-.2-.5-.3z" fill="currentColor"/></svg>
+            Place Order via WhatsApp
+          </button>
+        </div>
       </form>
     </div>
   </aside>

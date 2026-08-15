@@ -91,6 +91,8 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
     const cartClose = $("cartClose");
     const cartItemsEl = $("cartItems");
     const cartTotalEl = $("cartTotal");
+    const summaryCountEl = $("summaryCount");
+    const summaryTotalEl = $("summaryTotal");
     const checkoutForm = $("checkoutForm");
     const toast = $("toast");
 
@@ -115,6 +117,10 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
     const copyCakeSummaryBtn = $("copyCakeSummaryBtn");
     const sendCakeWhatsAppBtn = $("sendCakeWhatsAppBtn");
     const sendCakeWhatsAppBtnText = $("sendCakeWhatsAppBtnText");
+
+    // Checkout Form refs
+    const toggleNotesBtn = $("toggleNotesBtn");
+    const notesContainer = $("notesContainer");
 
     /* ---------- 4. Helpers ---------- */
     const money = (n) => CURRENCY + Number(n).toLocaleString("en-IN");
@@ -494,6 +500,15 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
       };
     }
 
+    // Checkout Form Event Listeners
+    if (toggleNotesBtn) {
+      toggleNotesBtn.onclick = () => {
+        const isHidden = notesContainer.hidden;
+        notesContainer.hidden = !isHidden;
+        toggleNotesBtn.textContent = isHidden ? "- Hide Order Note" : "+ Add Order Note / PO Number";
+      };
+    }
+
     function addToCart(id) {
       const p = findProduct(id);
       const storeType = store.storeType || 'B2C';
@@ -541,7 +556,9 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
 
       if (cart.length === 0) {
         cartItemsEl.innerHTML = '<div class="cart__empty">Your cart is empty</div>';
-        cartTotalEl.textContent = money(0);
+        if (cartTotalEl) cartTotalEl.textContent = money(0);
+        if (summaryTotalEl) summaryTotalEl.textContent = money(0);
+        if (summaryCountEl) summaryCountEl.textContent = "0";
         return;
       }
 
@@ -570,7 +587,11 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
         `;
         cartItemsEl.appendChild(row);
       });
-      cartTotalEl.textContent = money(cartTotal());
+
+      const total = cartTotal();
+      if (cartTotalEl) cartTotalEl.textContent = money(total);
+      if (summaryTotalEl) summaryTotalEl.textContent = money(total);
+      if (summaryCountEl) summaryCountEl.textContent = cart.reduce((s, i) => s + i.qty, 0);
     }
 
     function placeOrder(e) {
@@ -586,9 +607,11 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
       const phone = $("custPhone")?.value.trim();
       const address = $("custAddress")?.value.trim();
       const pin = $("custPin")?.value.trim();
+      const date = $("deliveryDate")?.value;
+      const gstin = $("gstin")?.value.trim();
       const notes = $("custNotes")?.value.trim();
 
-      if (!name || !phone || !address || !pin) {
+      if (!name || !phone || !address || !pin || !date) {
         showToast("Please fill all required details");
         return;
       }
@@ -627,6 +650,8 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
         `Customer Details:`,
         `Name: ${name}`,
         `Phone: ${phone}`,
+        `Delivery Date: ${date}`,
+        `GSTIN: ${gstin || "N/A"}`,
         `Address: ${address}`,
         `Pincode: ${pin}`,
         notes ? `Notes: ${notes}` : ""
