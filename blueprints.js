@@ -1,4 +1,22 @@
 export const STORE_BLUEPRINTS = {
+  demo: {
+    store: {
+      name: "CraftCreative Cart",
+      tagline: "Direct ordering from local vendors via WhatsApp.",
+      whatsappNumber: "918073511215",
+      currencySymbol: "₹",
+      accentColor: "#c96c8a",
+      accentColorDark: "#8f4160",
+      storeType: "B2C"
+    },
+    categories: ["All", "Resin Art", "Crochet", "Bakers", "Gifting"],
+    products: [
+      { id: "resin-frame-8", name: "8 Inch Resin Frame", price: 2600, category: "Resin Art", image: "/products/resin-frame-8.jpeg", inStock: true },
+      { id: "rose-pendant-combo", name: "Rose Black & Pendant Combo", price: 1450, category: "Resin Art", image: "/products/rose-pendant-combo.jpeg", inStock: true },
+      { id: "crochet-flower-bouquet", name: "Crochet Flower Bouquet", price: 1200, category: "Crochet", image: "/products/crochet-flower-bouquet.jpg", inStock: true },
+      { id: "bakers-chocolate-cake", name: "Homemade Chocolate Cake", price: 950, category: "Bakers", image: "/products/bakers-chocolate-cake.jpg", inStock: true }
+    ]
+  },
   resinart: {
     store: {
       name: "Shridevi Resin Art",

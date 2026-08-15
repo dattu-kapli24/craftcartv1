@@ -14,7 +14,7 @@ export function getStoreIdFromUrl() {
   const reserved = ["admin", "login", "admin.html", "login.html", "index.html"];
   if (path[0] && !reserved.includes(path[0].toLowerCase())) return path[0];
   const params = new URLSearchParams(window.location.search);
-  return params.get('store') || 'richwhisk';
+  return params.get('store') || 'bakerswholesale';
 }
 
 export { auth };
@@ -48,9 +48,7 @@ export async function getStoreData(storeId) {
     if (!storeSnap.exists()) return null;
 
     const storeConfig = storeSnap.data();
-    let q = (storeId === 'demo')
-      ? query(collection(db, "products"))
-      : query(collection(db, "products"), where("storeId", "==", storeId));
+    const q = query(collection(db, "products"), where("storeId", "==", storeId));
 
     const querySnapshot = await getDocs(q);
     const products = [];
