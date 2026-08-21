@@ -231,6 +231,15 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
         // Custom cake logic only applies to isBakeryStore items marked customizable
         const isCustom = isBakeryStore && Boolean(p.isCustomizable);
 
+        let imgSrc = p.image || '';
+        if (!imgSrc || imgSrc.includes('placehold.co')) {
+          const bpMatch = STORE_BLUEPRINTS?.[storeId]?.products?.find(item => item.id === p.id || item.name?.toLowerCase() === p.name?.toLowerCase());
+          if (bpMatch?.image) imgSrc = bpMatch.image;
+        }
+        if (imgSrc && !imgSrc.startsWith('http') && !imgSrc.startsWith('data:') && !imgSrc.startsWith('/')) {
+          imgSrc = '/' + imgSrc;
+        }
+
         let bulkPricingHtml = '';
         if (storeType === 'B2B' && p.bulkPricing && p.bulkPricing.length > 0) {
           bulkPricingHtml = `
@@ -243,7 +252,7 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
 
         card.innerHTML = `
           <div class="card__img-wrap">
-            <img class="card__img" src="${p.image}" alt="${p.name}" onerror="this.src='https://placehold.co/400x400?text=Product+Image'">
+            <img class="card__img" src="${imgSrc}" alt="${p.name}" loading="lazy" onerror="if(!this.dataset.retry){this.dataset.retry='1';const fname=this.src.split('/').pop();this.src='/products/'+fname;}">
             ${storeType === 'B2B' && p.moq ? `<span class="card__badge">MOQ: ${p.moq}</span>` : (isCustom ? `<span class="card__badge" style="background:#db2777; color:#fff;">Customizable</span>` : '')}
           </div>
           <div class="card__body">
@@ -275,7 +284,15 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
     /* ---------- 6. Custom Cake Ordering Logic ---------- */
     function openCakeCustomModal(prod) {
       activeCustomProduct = prod;
-      if (cakeModalImg) cakeModalImg.src = prod.image;
+      let modalImgSrc = prod.image || '';
+      if (!modalImgSrc || modalImgSrc.includes('placehold.co')) {
+        const bpMatch = STORE_BLUEPRINTS?.[storeId]?.products?.find(item => item.id === prod.id || item.name?.toLowerCase() === prod.name?.toLowerCase());
+        if (bpMatch?.image) modalImgSrc = bpMatch.image;
+      }
+      if (modalImgSrc && !modalImgSrc.startsWith('http') && !modalImgSrc.startsWith('data:') && !modalImgSrc.startsWith('/')) {
+        modalImgSrc = '/' + modalImgSrc;
+      }
+      if (cakeModalImg) cakeModalImg.src = modalImgSrc;
       if (cakeModalName) cakeModalName.textContent = prod.name;
       if (cakeModalDesc) cakeModalDesc.textContent = prod.description || "Customizable handcrafted cake.";
 

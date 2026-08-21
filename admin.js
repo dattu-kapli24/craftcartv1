@@ -149,9 +149,14 @@ import { STORE_BLUEPRINTS } from "./blueprints.js";
         `;
       }
 
+      let adminImg = p.image || '';
+      if (adminImg && !adminImg.startsWith('http') && !adminImg.startsWith('data:') && !adminImg.startsWith('/')) {
+        adminImg = '/' + adminImg;
+      }
+
       card.innerHTML = `
         <div style="display:flex; gap:15px;">
-           <img src="${p.image || ''}" class="product-preview-img" onerror="this.src='https://placehold.co/100x100?text=No+Image'">
+           <img src="${adminImg}" class="product-preview-img" onerror="if(!this.dataset.retry){this.dataset.retry='1';const fname=this.src.split('/').pop();this.src='/products/'+fname;}">
            <div style="flex:1;">
               <div class="form-row">
                 <div class="form-group">

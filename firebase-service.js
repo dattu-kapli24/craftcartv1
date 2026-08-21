@@ -105,7 +105,7 @@ export async function getOwnedStores(uid) {
 }
 
 export async function getStoreData(storeId) {
-  const blueprint = STORE_BLUEPRINTS && STORE_BLUEPRINTS[storeId];
+  const blueprint = STORE_BLUEPRINTS && (STORE_BLUEPRINTS[storeId] || (storeId === "plywood" ? STORE_BLUEPRINTS["plywoodwholesale"] : null));
   try {
     if (!db) return blueprint || null;
     const storeRef = doc(db, "stores", storeId);
@@ -121,15 +121,26 @@ export async function getStoreData(storeId) {
     const products = [];
     querySnapshot.forEach((doc) => { 
       const pData = { id: doc.id, ...doc.data() };
-      // If image is missing, placeholder, or broken, resolve with blueprint image
+      
+      // Auto-reconcile with blueprint images
+      const bpMatch = blueprint?.products?.find(p => p.id === pData.id || p.name?.toLowerCase() === pData.name?.toLowerCase());
+      if (bpMatch && bpMatch.image) {
+        if (!pData.image || pData.image.includes("placehold.co") || pData.image.trim() === "" || pData.image.includes("placeholder")) {
+          pData.image = bpMatch.image;
+        }
+      }
+      
+      // Global fallback across any store blueprint
       if (!pData.image || pData.image.includes("placehold.co") || pData.image.trim() === "") {
-        if (blueprint && blueprint.products) {
-          const match = blueprint.products.find(p => p.id === pData.id || p.name?.toLowerCase() === pData.name?.toLowerCase());
-          if (match && match.image) {
-            pData.image = match.image;
+        for (const bp of Object.values(STORE_BLUEPRINTS)) {
+          const m = bp.products?.find(p => p.id === pData.id || p.name?.toLowerCase() === pData.name?.toLowerCase());
+          if (m?.image) {
+            pData.image = m.image;
+            break;
           }
         }
       }
+
       products.push(pData);
     });
 
