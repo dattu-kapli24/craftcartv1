@@ -1,0 +1,6 @@
+{
+  "name": "CraftCart",
+  "description": "OrderSpot Collect — Automated WhatsApp B2B Invoicing & Payment Recovery platform with Plywood, Bakery & Artisan wholesale storefronts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
