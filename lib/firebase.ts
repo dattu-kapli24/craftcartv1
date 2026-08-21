@@ -10,8 +10,13 @@ import {
   getDocs,
   writeBatch,
   serverTimestamp,
+  setLogLevel,
   type Firestore
 } from 'firebase/firestore';
+
+try {
+  setLogLevel('silent');
+} catch (e) {}
 import {
   signInWithEmailAndPassword,
   signOut,

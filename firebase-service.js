@@ -1,9 +1,29 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { initializeFirestore, getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, deleteDoc, writeBatch } from "firebase/firestore";
+import { 
+  initializeFirestore, 
+  getFirestore, 
+  setLogLevel,
+  doc, 
+  getDoc, 
+  setDoc, 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  deleteDoc, 
+  writeBatch 
+} from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 import { firebaseConfig, cloudinaryConfig } from "./firebase-config.js";
 import { STORE_BLUEPRINTS } from "./blueprints.js";
+
+// Silence internal connection warning logs in sandbox / offline environments
+try {
+  setLogLevel("silent");
+} catch (e) {
+  // Ignore
+}
 
 let app;
 let db;
@@ -12,10 +32,9 @@ let auth;
 
 try {
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-  // Enable long-polling to prevent WebChannel connectivity drops and offline alerts in sandbox/iframe environments
+  // Enable clean long-polling to prevent WebChannel drop errors in sandbox/iframe environments
   db = initializeFirestore(app, {
     experimentalForceLongPolling: true,
-    experimentalAutoDetectLongPolling: true,
   });
   storage = getStorage(app);
   auth = getAuth(app);
@@ -23,13 +42,20 @@ try {
   try {
     db = getFirestore(app);
   } catch (err) {
-    console.warn("Firestore fallback warning:", err);
+    // Ignore fallback errors
   }
   storage = getStorage(app);
   auth = getAuth(app);
 }
 
 export { app, db, storage, auth };
+
+const withTimeout = (promise, ms = 2000) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore timeout")), ms))
+  ]);
+};
 
 export function getStoreIdFromUrl() {
   const path = window.location.pathname.split('/').filter(p => p !== "");
@@ -69,12 +95,11 @@ export async function getOwnedStores(uid) {
   try {
     if (!db) return [];
     const q = query(collection(db, "stores"), where("ownerId", "==", uid));
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await withTimeout(getDocs(q), 2000);
     const stores = [];
     querySnapshot.forEach((doc) => { stores.push({ id: doc.id, ...doc.data() }); });
     return stores;
   } catch (error) {
-    console.warn("getOwnedStores warning:", error.message);
     return [];
   }
 }
@@ -84,7 +109,7 @@ export async function getStoreData(storeId) {
   try {
     if (!db) return blueprint || null;
     const storeRef = doc(db, "stores", storeId);
-    const storeSnap = await getDoc(storeRef);
+    const storeSnap = await withTimeout(getDoc(storeRef), 2000);
     if (!storeSnap.exists()) {
       return blueprint || null;
     }
@@ -92,7 +117,7 @@ export async function getStoreData(storeId) {
     const storeConfig = storeSnap.data();
     const q = query(collection(db, "products"), where("storeId", "==", storeId));
 
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await withTimeout(getDocs(q), 2000);
     const products = [];
     querySnapshot.forEach((doc) => { 
       const pData = { id: doc.id, ...doc.data() };
@@ -116,7 +141,6 @@ export async function getStoreData(storeId) {
       products: finalProducts
     };
   } catch (error) {
-    console.warn("getStoreData warning:", error.message);
     return blueprint || null;
   }
 }
