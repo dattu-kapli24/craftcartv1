@@ -28,6 +28,7 @@ export function VendorSettingsModal({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (vendor) {
@@ -51,6 +52,7 @@ export function VendorSettingsModal({
     e.preventDefault();
     setIsSaving(true);
     setSavedSuccess(false);
+    setErrorMessage(null);
 
     const updated: Vendor = {
       ...vendor,
@@ -70,8 +72,9 @@ export function VendorSettingsModal({
         setSavedSuccess(false);
         onClose();
       }, 1000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating vendor profile:', err);
+      setErrorMessage(err?.message || 'Failed to save settings to Firestore.');
     } finally {
       setIsSaving(false);
     }
@@ -114,6 +117,12 @@ export function VendorSettingsModal({
 
         {/* Scrollable Form Content */}
         <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6">
+          {errorMessage && (
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-center gap-2">
+              <span className="font-semibold">Error:</span> {errorMessage}
+            </div>
+          )}
+
           {/* Section 1: Business Profile */}
           <div className="space-y-3.5 sm:space-y-4">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400">

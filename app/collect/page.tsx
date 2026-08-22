@@ -298,15 +298,16 @@ export default function OrderSpotCollectPage() {
 
     setIsSyncingCloud(true);
     try {
-      // 1. Push current vendor profile and any active invoices directly to Firestore
+      showToast('Syncing with Firebase Firestore...');
+      // 1. Push current vendor profile directly to Firestore
       await saveVendorProfile(currentUid, vendor);
+      
+      // 2. Push all current invoices in state to Firestore
       if (invoices.length > 0) {
-        for (const inv of invoices) {
-          await saveInvoice({ ...inv, vendorId: currentUid });
-        }
+        await batchWriteInvoicesToFirestore(invoices, currentUid);
       }
 
-      // 2. Refresh from Firestore
+      // 3. Re-fetch from Firestore to verify documents are live
       const [profile, loadedInvoices] = await Promise.all([
         getVendorProfile(currentUid),
         getVendorInvoices(currentUid)
@@ -316,7 +317,7 @@ export default function OrderSpotCollectPage() {
         setInvoices(loadedInvoices);
       }
 
-      showToast(`✓ Cloud Synced: ${invoices.length} invoices saved to Firebase Firestore!`);
+      showToast(`✓ Cloud Synced: Vendor profile & ${invoices.length} invoices saved to Firebase Firestore!`);
     } catch (err: any) {
       console.error('Cloud sync error:', err);
       showToast(`Sync alert: ${err.message || 'Saved to offline cache'}`);
@@ -390,26 +391,34 @@ export default function OrderSpotCollectPage() {
     return result;
   }, [invoices, searchTerm, statusFilter, sortBy, sortOrder]);
 
-  // Excel Upload Handler
+  // Excel / CSV Upload Handler
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const targetVendorId = user?.uid || (isDemoMode ? 'demo_vendor_uid' : vendor.id);
+
     try {
-      showToast('Parsing Tally spreadsheet...');
-      const parsed = await parseTallyExcelFile(file, user?.uid || vendor.id);
+      showToast('Parsing spreadsheet...');
+      const parsed = await parseTallyExcelFile(file, targetVendorId);
 
       if (parsed.length === 0) {
         showToast('No valid receivables found in the sheet.');
         return;
       }
 
-      await batchWriteInvoicesToFirestore(parsed, user?.uid || vendor.id);
+      showToast(`Uploading ${parsed.length} invoices to Firestore...`);
+      await batchWriteInvoicesToFirestore(parsed, targetVendorId);
 
       // Merge newly uploaded invoices with state
-      setInvoices((prev) => [...parsed, ...prev]);
-      showToast(`Successfully imported ${parsed.length} invoices!`);
+      setInvoices((prev) => {
+        const parsedIds = new Set(parsed.map((p) => p.id));
+        const remaining = prev.filter((p) => !parsedIds.has(p.id));
+        return [...parsed, ...remaining];
+      });
+      showToast(`✓ Successfully imported & saved ${parsed.length} invoices to Firestore!`);
     } catch (err: any) {
+      console.error('File upload / Firestore error:', err);
       showToast(`Upload failed: ${err.message}`);
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';

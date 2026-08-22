@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
-import { doc, writeBatch, collection } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { doc, writeBatch, collection, setDoc } from 'firebase/firestore';
+import { db, cleanFirestoreData } from '../lib/firebase';
 import { Invoice } from '../src/types/collect';
 
 /**
@@ -193,29 +193,48 @@ export async function parseTallyExcelFile(file: File, vendorId: string): Promise
 }
 
 /**
- * Batches and writes parsed invoices to Firestore in max 500-chunk limits
+ * Batches and writes parsed invoices to Firestore in max 400-chunk limits
  */
 export async function batchWriteInvoicesToFirestore(invoices: Invoice[], vendorId: string): Promise<number> {
   if (!invoices || invoices.length === 0) return 0;
 
-  const CHUNK_SIZE = 450; // Under Firestore 500 write limit
+  const CHUNK_SIZE = 400; // Under Firestore 500 batch write limit
   let totalWritten = 0;
 
   for (let i = 0; i < invoices.length; i += CHUNK_SIZE) {
     const chunk = invoices.slice(i, i + CHUNK_SIZE);
-    const batch = writeBatch(db);
-
-    chunk.forEach((inv) => {
-      const docRef = doc(collection(db, 'invoices'), inv.id);
-      batch.set(docRef, { ...inv, vendorId, updatedAt: new Date().toISOString() });
-    });
-
+    
     try {
+      const batch = writeBatch(db);
+      chunk.forEach((inv) => {
+        const docRef = doc(db, 'invoices', inv.id);
+        const cleanInv = cleanFirestoreData({
+          ...inv,
+          vendorId,
+          updatedAt: new Date().toISOString()
+        });
+        batch.set(docRef, cleanInv, { merge: true });
+      });
+
       await batch.commit();
       totalWritten += chunk.length;
-    } catch (err) {
-      console.warn('Batch write to Firestore encountered issue, fallback local persistence:', err);
-      totalWritten += chunk.length;
+    } catch (err: any) {
+      console.warn('Batch write encountered issue, attempting individual setDocs:', err);
+      // Fallback: Individual setDocs to avoid single-item failure breaking the entire batch
+      for (const inv of chunk) {
+        try {
+          const docRef = doc(db, 'invoices', inv.id);
+          const cleanInv = cleanFirestoreData({
+            ...inv,
+            vendorId,
+            updatedAt: new Date().toISOString()
+          });
+          await setDoc(docRef, cleanInv, { merge: true });
+          totalWritten++;
+        } catch (individualErr) {
+          console.error(`Failed to write invoice ${inv.id}:`, individualErr);
+        }
+      }
     }
   }
 

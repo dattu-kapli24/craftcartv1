@@ -80,6 +80,22 @@ export function subscribeToAuth(callback: (user: User | null) => void) {
   return onAuthStateChanged(auth, callback);
 }
 
+// ---------------- UTILITY: CLEAN OBJECT FOR FIRESTORE ----------------
+// Firestore throws an error if any field is `undefined`. This helper cleans all fields.
+export function cleanFirestoreData<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const cleaned: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+        cleaned[key] = cleanFirestoreData(value);
+      } else {
+        cleaned[key] = value;
+      }
+    }
+  }
+  return cleaned;
+}
+
 // ---------------- VENDOR SETTINGS FIRESTORE HELPERS ----------------
 
 const DEFAULT_TEMPLATE = `Dear {{customer_name}},
@@ -91,17 +107,9 @@ Kindly complete the payment using this instant UPI link:
 
 Thank you for your business!`;
 
-// Helper to timeout long Firestore requests gracefully
-const withTimeout = <T>(promise: Promise<T>, ms = 8000): Promise<T> => {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Firestore operation timed out')), ms))
-  ]);
-};
-
 export async function getVendorProfile(userId: string): Promise<Vendor> {
   const fallbackVendor: Vendor = {
-    id: userId,
+    id: userId || 'demo_vendor_uid',
     businessName: 'OrderSpot Wholesale Mart',
     upiId: 'orderspot@icici',
     payeeName: 'OrderSpot Wholesale & Distributors',
@@ -114,29 +122,29 @@ export async function getVendorProfile(userId: string): Promise<Vendor> {
   if (!userId) return fallbackVendor;
 
   try {
-    // Try vendor_profiles collection first
+    // 1. Try vendor_profiles collection first
     const profileRef = doc(db, 'vendor_profiles', userId);
-    const profileSnap = await withTimeout(getDoc(profileRef), 2500);
+    const profileSnap = await getDoc(profileRef);
     if (profileSnap.exists()) {
       return { ...fallbackVendor, ...profileSnap.data(), id: userId } as Vendor;
     }
 
-    // Fallback check on vendors collection
+    // 2. Fallback check on vendors collection
     const docRef = doc(db, 'vendors', userId);
-    const snap = await withTimeout(getDoc(docRef), 2500);
+    const snap = await getDoc(docRef);
     if (snap.exists()) {
       return { ...fallbackVendor, ...snap.data(), id: userId } as Vendor;
     }
   } catch (err) {
-    console.warn('Could not fetch vendor profile from Firestore, using cached/default state:', err);
+    console.warn('Could not fetch vendor profile from Firestore, using cached state:', err);
   }
 
   // Check localStorage for offline persistence fallback
   if (typeof window !== 'undefined') {
-    const local = localStorage.getItem(`orderspot_vendor_${userId}`);
+    const local = localStorage.getItem(`orderspot_vendor_${userId}`) || localStorage.getItem('orderspot_collect_vendor');
     if (local) {
       try {
-        return JSON.parse(local);
+        return { ...fallbackVendor, ...JSON.parse(local), id: userId };
       } catch (e) {}
     }
   }
@@ -145,29 +153,35 @@ export async function getVendorProfile(userId: string): Promise<Vendor> {
 }
 
 export async function saveVendorProfile(userId: string, vendorData: Partial<Vendor>): Promise<void> {
-  if (!userId) return;
+  if (!userId) throw new Error('User ID is required to save vendor settings');
 
-  const dataToSave = {
+  const cleanData = cleanFirestoreData({
     ...vendorData,
     id: userId,
     updatedAt: new Date().toISOString()
-  };
+  });
 
+  // 1. Save to Firestore in vendor_profiles and vendors
+  let firestoreError: any = null;
   try {
-    // Save to vendor_profiles collection
     const profileRef = doc(db, 'vendor_profiles', userId);
-    await withTimeout(setDoc(profileRef, dataToSave, { merge: true }), 2500);
+    await setDoc(profileRef, cleanData, { merge: true });
 
-    // Also mirror to vendors collection
     const docRef = doc(db, 'vendors', userId);
-    await withTimeout(setDoc(docRef, dataToSave, { merge: true }), 2500);
-  } catch (err) {
-    console.warn('Firestore setDoc failed for vendor, saving to localStorage:', err);
+    await setDoc(docRef, cleanData, { merge: true });
+  } catch (err: any) {
+    console.error('Firestore saveVendorProfile error:', err);
+    firestoreError = err;
   }
 
+  // 2. LocalStorage backup
   if (typeof window !== 'undefined') {
-    localStorage.setItem(`orderspot_vendor_${userId}`, JSON.stringify(dataToSave));
-    localStorage.setItem('orderspot_collect_vendor', JSON.stringify(dataToSave));
+    localStorage.setItem(`orderspot_vendor_${userId}`, JSON.stringify(cleanData));
+    localStorage.setItem('orderspot_collect_vendor', JSON.stringify(cleanData));
+  }
+
+  if (firestoreError) {
+    throw new Error(`Firestore save failed: ${firestoreError.message || 'Permission or connection issue'}`);
   }
 }
 
@@ -178,7 +192,7 @@ export async function getVendorInvoices(userId: string): Promise<Invoice[]> {
 
   try {
     const q = query(collection(db, 'invoices'), where('vendorId', '==', userId));
-    const querySnapshot = await withTimeout(getDocs(q), 2500);
+    const querySnapshot = await getDocs(q);
     const invoices: Invoice[] = [];
     querySnapshot.forEach((docSnap) => {
       invoices.push({ id: docSnap.id, ...docSnap.data() } as Invoice);
@@ -194,7 +208,7 @@ export async function getVendorInvoices(userId: string): Promise<Invoice[]> {
   }
 
   if (typeof window !== 'undefined') {
-    const local = localStorage.getItem(`orderspot_invoices_${userId}`);
+    const local = localStorage.getItem(`orderspot_invoices_${userId}`) || localStorage.getItem('orderspot_collect_invoices');
     if (local) {
       try {
         return JSON.parse(local);
@@ -207,16 +221,17 @@ export async function getVendorInvoices(userId: string): Promise<Invoice[]> {
 
 export async function saveInvoice(invoice: Invoice): Promise<void> {
   if (!invoice || !invoice.id) return;
-  const dataToSave = {
+  const cleanData = cleanFirestoreData({
     ...invoice,
     updatedAt: new Date().toISOString()
-  };
+  });
 
   try {
     const docRef = doc(db, 'invoices', invoice.id);
-    await withTimeout(setDoc(docRef, dataToSave, { merge: true }), 3000);
+    await setDoc(docRef, cleanData, { merge: true });
   } catch (err) {
-    console.warn('Firestore saveInvoice warning (offline fallback active):', err);
+    console.error('Firestore saveInvoice error:', err);
+    throw err;
   }
 
   if (typeof window !== 'undefined') {
@@ -228,9 +243,9 @@ export async function saveInvoice(invoice: Invoice): Promise<void> {
         let list: Invoice[] = local ? JSON.parse(local) : [];
         const idx = list.findIndex((i) => i.id === invoice.id);
         if (idx >= 0) {
-          list[idx] = { ...list[idx], ...dataToSave };
+          list[idx] = { ...list[idx], ...cleanData } as Invoice;
         } else {
-          list.unshift(dataToSave as Invoice);
+          list.unshift(cleanData as Invoice);
         }
         localStorage.setItem(key, JSON.stringify(list));
       });
@@ -247,16 +262,17 @@ export async function updateInvoiceInFirestore(
 ): Promise<void> {
   if (!invoiceId) return;
 
-  const dataToSave = {
+  const cleanData = cleanFirestoreData({
     ...updates,
     updatedAt: new Date().toISOString()
-  };
+  });
 
   try {
     const docRef = doc(db, 'invoices', invoiceId);
-    await withTimeout(setDoc(docRef, dataToSave, { merge: true }), 3000);
+    await setDoc(docRef, cleanData, { merge: true });
   } catch (err) {
-    console.warn('Firestore updateInvoice warning (offline fallback active):', err);
+    console.error('Firestore updateInvoice error:', err);
+    throw err;
   }
 
   if (typeof window !== 'undefined') {
@@ -269,7 +285,7 @@ export async function updateInvoiceInFirestore(
           let list: Invoice[] = JSON.parse(local);
           const idx = list.findIndex((i) => i.id === invoiceId);
           if (idx >= 0) {
-            list[idx] = { ...list[idx], ...dataToSave };
+            list[idx] = { ...list[idx], ...cleanData } as Invoice;
             localStorage.setItem(key, JSON.stringify(list));
           }
         }
@@ -285,9 +301,10 @@ export async function deleteInvoiceFromFirestore(invoiceId: string, vendorId?: s
 
   try {
     const docRef = doc(db, 'invoices', invoiceId);
-    await withTimeout(deleteDoc(docRef), 3000);
+    await deleteDoc(docRef);
   } catch (err) {
-    console.warn('Firestore deleteDoc warning:', err);
+    console.error('Firestore deleteDoc error:', err);
+    throw err;
   }
 
   if (typeof window !== 'undefined') {
@@ -308,10 +325,11 @@ export async function deleteInvoiceFromFirestore(invoiceId: string, vendorId?: s
 
 export async function logReminderToFirestore(log: ReminderLog, vendorId: string): Promise<void> {
   try {
+    const cleanData = cleanFirestoreData({ ...log, vendorId });
     const docRef = doc(db, 'reminder_logs', log.id);
-    await setDoc(docRef, { ...log, vendorId });
+    await setDoc(docRef, cleanData, { merge: true });
   } catch (err) {
-    console.warn('Firestore logReminder failed:', err);
+    console.error('Firestore logReminder failed:', err);
   }
 }
 
