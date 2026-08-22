@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>OrderSpot — B2B Wholesale & Retail Storefront</title>
+  <meta property="og:title" content="OrderSpot — Shop via WhatsApp" />
+  <meta property="og:site_name" content="OrderSpot" />
+  <meta property="og:description" content="Direct ordering from local vendors via WhatsApp." />
+  <meta name="twitter:title" content="OrderSpot — Shop via WhatsApp" />
+  <link rel="preconnect" href="https://images.pexels.com" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9B%8D%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+
+  <!-- ===== Storefront Switcher Bar ===== -->
+  <div class="store-switcher-bar" id="storeSwitcherBar">
+    <div class="store-switcher-inner">
+      <div class="switcher-badge">
+        <span class="live-dot"></span>
+        <span>Store Preview:</span>
+      </div>
+      <div class="switcher-pills" id="switcherPills">
+        <a href="?store=plywoodwholesale" class="switcher-pill switcher-pill--b2b" data-store="plywoodwholesale" id="pillPlywoodWholesale" style="font-weight: 700; border-color: #d97706;">
+          🪵 Shreeji Ply & Laminates (B2B)
+        </a>
+        <a href="?store=bakerswholesale" class="switcher-pill switcher-pill--b2b" data-store="bakerswholesale" id="pillBakersWholesale">
+          📦 Bakers Wholesale (B2B)
+        </a>
+        <a href="?store=richwhisk" class="switcher-pill" data-store="richwhisk" id="pillRichWhisk">
+          🎂 Rich Whisk (Custom Bakery)
+        </a>
+        <a href="?store=resinart" class="switcher-pill" data-store="resinart" id="pillResinArt">
+          🌸 Resin Art (B2C)
+        </a>
+        <a href="/" class="switcher-pill switcher-pill--collect" id="pillCollect" style="background: #059669; color: #ffffff; font-weight: 600;">
+          ⚡ OrderSpot Collect (Payment Recovery)
+        </a>
+      </div>
+      <a href="/admin.html" class="switcher-admin-btn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12 2a5 5 0 105 5 5 5 0 00-5-5zm0 8a3 3 0 113-3 3 3 0 01-3 3zm9 11v-1a7 7 0 00-7-7h-4a7 7 0 00-7 7v1h2v-1a5 5 0 015-5h4a5 5 0 015 5v1z"/></svg>
+        Admin Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== Header ===== -->
+  <header class="header" id="header">
+    <div class="header__inner">
+      <div class="brand">
+        <div class="brand__logo" id="brandLogo">S</div>
+        <div class="brand__text">
+          <h1 class="brand__name" id="storeName">Store Name</h1>
+          <p class="brand__tagline" id="storeTagline">Tagline</p>
+        </div>
+      </div>
+
+      <div class="header__search">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <input type="search" id="searchInput" placeholder="Search products…" aria-label="Search products" autocomplete="off" />
+      </div>
+
+      <button class="cart-btn" id="cartBtn" aria-label="Open cart">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6h15l-1.5 9h-12L5 3H2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="9" cy="20" r="1.6" fill="currentColor"/>
+          <circle cx="18" cy="20" r="1.6" fill="currentColor"/>
+        </svg>
+        <span class="cart-btn__count" id="cartCount" hidden>0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== Category Pills ===== -->
+  <nav class="pills" id="categoryPills" aria-label="Product categories"></nav>
+
+  <!-- ===== Main / Product Grid ===== -->
+  <main class="main">
+    <div class="main__head">
+      <h2 class="main__title" id="gridTitle">All Products</h2>
+      <span class="main__count" id="gridCount"></span>
+    </div>
+    <div class="grid" id="productGrid" aria-live="polite"></div>
+    <p class="empty-state" id="emptyState" hidden>No products match your search.</p>
+  </main>
+
+  <!-- ===== Footer ===== -->
+  <footer class="footer">
+    <p id="footerName">Store Name</p>
+    <p class="footer__sub">Order via WhatsApp · Cash on delivery available</p>
+    <p class="footer__powered">Powered by <a href="/" style="color: inherit; text-decoration: none; font-weight: 600;">OrderSpot Collect</a></p>
+  </footer>
+
+  <!-- ===== Cart Slide-over ===== -->
+  <div class="overlay" id="overlay" hidden></div>
+  <aside class="cart" id="cartPanel" aria-label="Your cart" aria-hidden="true">
+    <div class="cart__head">
+      <h2>Your Cart</h2>
+      <button class="cart__close" id="cartClose" aria-label="Close cart">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <div class="cart__body" id="cartItems"></div>
+
+    <div class="cart__foot" id="cartFoot">
+      <div class="cart-summary-sticky" id="cartSummarySticky">
+        <span>Cart Summary (<span id="summaryCount">0</span> items)</span>
+        <span id="summaryTotal">₹0</span>
+      </div>
+
+      <form id="checkoutForm" class="checkout-form" novalidate>
+        <div class="form-grid">
+          <!-- Row 1 -->
+          <div class="form-group col-span-2">
+            <input type="text" id="custName" placeholder="Business Name / Contact Name *" required autocomplete="name" class="compact-input" />
+          </div>
+
+          <!-- Row 2 -->
+          <div class="form-group">
+            <input type="tel" id="custPhone" placeholder="Phone Number *" required autocomplete="tel" class="compact-input" />
+          </div>
+          <div class="form-group">
+            <label for="deliveryDate" class="compact-field-label">Delivery Date *</label>
+            <input type="date" id="deliveryDate" required class="compact-input" title="Delivery Date" />
+          </div>
+
+          <!-- Row 3 -->
+          <div class="form-group">
+            <input type="text" id="custPin" placeholder="City / Pincode *" required autocomplete="postal-code" class="compact-input" />
+          </div>
+          <div class="form-group">
+            <input type="text" id="gstin" placeholder="GSTIN (Optional)" class="compact-input" />
+          </div>
+
+          <!-- Row 4 -->
+          <div class="form-group col-span-2">
+            <input type="text" id="custAddress" placeholder="Delivery Address *" required class="compact-input" />
+          </div>
+        </div>
+
+        <!-- Collapsible Notes -->
+        <div class="notes-collapsible">
+          <button type="button" id="toggleNotesBtn" class="notes-toggle-btn">+ Add Order Note / PO Number</button>
+          <div id="notesContainer" class="notes-content" hidden>
+            <textarea id="custNotes" placeholder="Enter special instructions or Purchase Order number..." rows="2" class="compact-textarea"></textarea>
+          </div>
+        </div>
+
+        <div class="checkout-actions-sticky">
+          <button type="submit" class="btn-whatsapp" id="placeOrderBtn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 00-8.6 15l-1.4 5 5.1-1.3A10 10 0 1012 2zm0 18a8 8 0 01-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1112 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8 1-.3.2-.5.1a6.5 6.5 0 01-1.9-1.2 7.2 7.2 0 01-1.3-1.7c-.1-.2 0-.4.1-.5l.4-.4.2-.4v-.4l-.8-1.9c-.2-.5-.4-.4-.5-.4h-.5a1 1 0 00-.7.3 3 3 0 00-.9 2.2 5.2 5.2 0 001.1 2.7 11.8 11.8 0 004.5 4 5.3 5.3 0 002.4.5 2.6 2.6 0 001.7-1.2 2.1 2.1 0 00.2-1.2c-.1-.1-.3-.2-.5-.3z" fill="currentColor"/></svg>
+            Place Order via WhatsApp
+          </button>
+        </div>
+      </form>
+    </div>
+  </aside>
+
+  <!-- ===== Toast ===== -->
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- ===== Custom Cake Ordering Modal ===== -->
+  <div class="cake-modal-backdrop" id="cakeModalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="cake-modal" id="cakeModal">
+      <div class="cake-modal__header">
+        <div class="cake-modal__title-wrap">
+          <div class="cake-modal__icon">🎂</div>
+          <div>
+            <h3 class="cake-modal__title">Custom Cake Ordering</h3>
+            <p class="cake-modal__subtitle">100% Customized for Home Bakeries</p>
+          </div>
+        </div>
+        <button class="cake-modal__close" id="closeCakeModalBtn" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="cake-modal__body">
+        <!-- Cake Banner -->
+        <div class="cake-preview-banner">
+          <img id="cakeModalImg" src="/products/rich-whisk-butterfly-tier.jpg" alt="Cake preview" />
+          <div>
+            <h4 id="cakeModalName">Custom Celebration Cake</h4>
+            <p id="cakeModalDesc">Handcrafted artisan cake customized to your design, flavors, and dietary needs.</p>
+          </div>
+        </div>
+
+        <form id="cakeCustomizationForm" class="cake-form-grid">
+          <!-- Left Column -->
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <!-- 1. Weight Options -->
+            <div class="cake-field-group">
+              <label class="cake-field-label">
+                <span>1. Weight Options <span style="color: #ef4444;">*</span></span>
+                <small id="cakeServesInfo">8-10 Portions</small>
+              </label>
+              <div class="weight-selector-grid" id="weightSelectorGrid">
+                <button type="button" class="weight-btn" data-weight="0.5 kg" data-mult="0.6">0.5 kg</button>
+                <button type="button" class="weight-btn weight-btn--active" data-weight="1 kg" data-mult="1.0">1 kg</button>
+                <button type="button" class="weight-btn" data-weight="1.5 kg" data-mult="1.45">1.5 kg</button>
+                <button type="button" class="weight-btn" data-weight="2 kg" data-mult="1.85">2 kg</button>
+                <button type="button" class="weight-btn" data-weight="Custom Size" data-mult="null">Custom Size</button>
+              </div>
+            </div>
+
+            <!-- 2. Dietary Preference -->
+            <div class="cake-field-group">
+              <label class="cake-field-label">
+                <span>2. Dietary Preference <span style="color: #ef4444;">*</span></span>
+              </label>
+              <div class="dietary-toggle-grid">
+                <div class="dietary-btn dietary-btn--active" id="dietaryEgglessBtn">
+                  <span>🌱 Eggless (+₹50)</span>
+                  <small style="color: #059669; font-weight: normal;">Specialist vegetarian bake</small>
+                </div>
+                <div class="dietary-btn dietary-btn--egg" id="dietaryEggBtn">
+                  <span>🥚 Contains Egg</span>
+                  <small style="color: #64748b; font-weight: normal;">Standard base recipe</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Flavor Selection -->
+            <div class="cake-field-group">
+              <label for="cakeFlavorSelectVanilla" class="cake-field-label">
+                <span>3. Flavor Selection <span style="color: #ef4444;">*</span></span>
+              </label>
+              <select id="cakeFlavorSelectVanilla" style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 0.9rem;">
+                <option value="Belgium Chocolate Truffle">Belgium Chocolate Truffle</option>
+                <option value="Vanilla Berry">Vanilla Berry</option>
+                <option value="Biscoff Caramel">Biscoff Caramel</option>
+                <option value="Hazelnut Praline">Hazelnut Praline</option>
+                <option value="Custom Flavor Request">Custom Flavor Request</option>
+              </select>
+              <input type="text" id="customFlavorInputVanilla" placeholder="Specify your custom flavor request..." style="display: none; margin-top: 6px; width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #f472b6; font-size: 0.85rem;" />
+            </div>
+
+            <!-- 4. Shape Selection -->
+            <div class="cake-field-group">
+              <label class="cake-field-label">
+                <span>4. Shape Selection <span style="color: #ef4444;">*</span></span>
+              </label>
+              <div class="shape-selector-grid" id="shapeSelectorGrid">
+                <button type="button" class="shape-btn shape-btn--active" data-shape="Round" data-extra="0">⚪ Round</button>
+                <button type="button" class="shape-btn" data-shape="Square" data-extra="50">⬜ Square</button>
+                <button type="button" class="shape-btn" data-shape="Heart" data-extra="100">💖 Heart</button>
+                <button type="button" class="shape-btn" data-shape="Multi-tier" data-extra="350">🎂 Multi-tier</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <!-- 5. Reference Design Upload -->
+            <div class="cake-field-group">
+              <label class="cake-field-label">
+                <span>5. Reference Design Photo</span>
+                <small style="color: #db2777;">Attach theme/design</small>
+              </label>
+              <label class="ref-upload-card" for="cakeRefFileInput">
+                <div style="font-size: 1.5rem; margin-bottom: 4px;">📸</div>
+                <div style="font-size: 0.85rem; font-weight: 700; color: #831843;" id="refUploadText">Click to upload reference photo</div>
+                <small style="color: #9d174d;">PNG, JPG up to 10MB</small>
+                <input type="file" id="cakeRefFileInput" accept="image/*" style="display: none;" />
+              </label>
+            </div>
+
+            <!-- 6. Message on Cake -->
+            <div class="cake-field-group">
+              <label for="cakeMessageInput" class="cake-field-label">
+                <span>6. Message on Cake (Greeting)</span>
+              </label>
+              <input type="text" id="cakeMessageInput" placeholder='e.g., "Happy 25th Birthday Rahul!"' style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 0.88rem;" />
+            </div>
+
+            <!-- 7. Special Instructions -->
+            <div class="cake-field-group">
+              <label for="cakeNotesInput" class="cake-field-label">
+                <span>7. Special Instructions & Allergies</span>
+              </label>
+              <textarea id="cakeNotesInput" rows="3" placeholder="Nut allergies, color themes (pastel pink), delivery timing notes..." style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 0.85rem; resize: none;"></textarea>
+            </div>
+          </div>
+        </form>
+
+        <!-- Dynamic Price Summary -->
+        <div class="cake-price-summary-box">
+          <div>
+            <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #db2777;">Interactive Live Estimate</div>
+            <div class="price-tag" id="cakeDynamicPrice">₹1,500</div>
+          </div>
+          <div style="text-align: right; font-size: 0.75rem; color: #64748b;">
+            Direct order & customization<br />via WhatsApp
+          </div>
+        </div>
+      </div>
+
+      <div class="cake-modal__footer">
+        <button type="button" id="copyCakeSummaryBtn" style="padding: 10px 16px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 0.82rem; font-weight: 600; color: #475569;">
+          📋 Copy Order Text
+        </button>
+        <button type="button" class="btn-whatsapp-custom" id="sendCakeWhatsAppBtn">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 2a10 10 0 00-8.6 15l-1.4 5 5.1-1.3A10 10 0 1012 2zm0 18a8 8 0 01-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1112 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8 1-.3.2-.5.1a6.5 6.5 0 01-1.9-1.2 7.2 7.2 0 01-1.3-1.7c-.1-.2 0-.4.1-.5l.4-.4.2-.4v-.4l-.8-1.9c-.2-.5-.4-.4-.5-.4h-.5a1 1 0 00-.7.3 3 3 0 00-.9 2.2 5.2 5.2 0 001.1 2.7 11.8 11.8 0 004.5 4 5.3 5.3 0 002.4.5 2.6 2.6 0 001.7-1.2 2.1 2.1 0 00.2-1.2c-.1-.1-.3-.2-.5-.3z"/></svg>
+          <span id="sendCakeWhatsAppBtnText">Send Custom Request on WhatsApp</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/store-config.js"></script>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
