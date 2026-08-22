@@ -5,12 +5,15 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
+    { "source": "/orderspot-collect/:path*", "destination": "/collect.html" },
     { "source": "/orderspot-collect", "destination": "/collect.html" },
+    { "source": "/collect/:path*", "destination": "/collect.html" },
+    { "source": "/collect", "destination": "/collect.html" },
+    { "source": "/admin/:path*", "destination": "/admin.html" },
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/login", "destination": "/login.html" },
-    { "source": "/collect", "destination": "/collect.html" },
-    { "source": "/products/:path*", "destination": "/products/:path*" },
-    { "source": "/assets/:path*", "destination": "/assets/:path*" },
+    { "source": "/store", "destination": "/store.html" },
+    { "source": "/pay", "destination": "/pay.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

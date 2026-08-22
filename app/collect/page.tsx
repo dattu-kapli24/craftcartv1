@@ -38,7 +38,8 @@ import {
   KeyRound,
   Sparkles,
   Database,
-  Check
+  Check,
+  PhoneCall
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { Vendor, Invoice, InvoiceStatus, ReminderLog } from '../../src/types/collect';
@@ -65,6 +66,7 @@ export default function OrderSpotCollectPage() {
   const [authLoading, setAuthLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [vendorSlug, setVendorSlug] = useState<string | null>(null);
 
   // Vendor Admin Login & Password Reset State
   const [authView, setAuthView] = useState<'LOGIN' | 'FORGOT_PASSWORD'>('LOGIN');
@@ -120,6 +122,57 @@ export default function OrderSpotCollectPage() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
+
+  // URL Routing: Detect root demo vs /orderspot-collect login vs vendor slug
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const path = window.location.pathname.toLowerCase().replace(/^\/+|\/+$/g, '');
+    const searchParams = new URLSearchParams(window.location.search);
+    const authParam = searchParams.get('auth');
+    const vendorParam = searchParams.get('vendor') || searchParams.get('store');
+
+    // If explicit login or portal URL
+    if (
+      path === 'orderspot-collect' ||
+      path.startsWith('orderspot-collect/') ||
+      path === 'collect' ||
+      path.startsWith('collect/') ||
+      path === 'collect.html' ||
+      path === 'login' ||
+      path === 'login.html' ||
+      authParam === 'login'
+    ) {
+      setIsDemoMode(false);
+    } else if (path && !['admin', 'admin.html', 'store', 'store.html', 'pay', 'pay.html', 'index.html', ''].includes(path)) {
+      // Future multi-customer dynamic routing like orderspot.in/plywoodwholesale or orderspot.in/srikrishna
+      setVendorSlug(path);
+      const formattedName = path
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+      setVendor((prev) => ({
+        ...prev,
+        businessName: formattedName,
+        upiId: `${path.replace(/[^a-z0-9]/g, '')}@icici`,
+        payeeName: formattedName
+      }));
+      setIsDemoMode(true);
+    } else if (vendorParam) {
+      setVendorSlug(vendorParam);
+      const formattedName = vendorParam
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+      setVendor((prev) => ({
+        ...prev,
+        businessName: formattedName,
+        upiId: `${vendorParam.replace(/[^a-z0-9]/g, '')}@icici`,
+        payeeName: formattedName
+      }));
+      setIsDemoMode(true);
+    } else {
+      // Default Root URL (orderspot.in / localhost:3000) -> Open interactive Demo Page immediately!
+      setIsDemoMode(true);
+    }
+  }, []);
 
   // Auth Listener
   useEffect(() => {
@@ -290,12 +343,16 @@ export default function OrderSpotCollectPage() {
 
   // Manual Cloud Sync Trigger
   const handleManualCloudSync = async () => {
-    const currentUid = user?.uid || (isDemoMode ? 'demo_vendor_uid' : null);
-    if (!currentUid) {
-      showToast('Please sign in with your email & password to sync to Firebase');
+    if (!user) {
+      showToast('Please sign in as a Vendor to sync live invoices to Firebase Firestore.');
+      setIsDemoMode(false);
+      if (typeof window !== 'undefined') {
+        window.history.pushState({}, '', '/orderspot-collect');
+      }
       return;
     }
 
+    const currentUid = user.uid;
     setIsSyncingCloud(true);
     try {
       showToast('Syncing with Firebase Firestore...');
@@ -800,12 +857,15 @@ export default function OrderSpotCollectPage() {
                   type="button"
                   onClick={() => {
                     setIsDemoMode(true);
-                    showToast('Welcome to OrderSpot Collect Sandbox Mode!');
+                    if (typeof window !== 'undefined') {
+                      window.history.pushState({}, '', '/');
+                    }
+                    showToast('Welcome to OrderSpot Collect Live Demo!');
                   }}
                   className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 active:scale-[0.99] text-slate-300 hover:text-white font-medium text-xs rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Continue in Offline / Sandbox Mode</span>
+                  <span>Explore Interactive Demo Sandbox →</span>
                 </button>
               </form>
             ) : (
@@ -882,6 +942,32 @@ export default function OrderSpotCollectPage() {
   // -------------------------------------------------------------
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased selection:bg-emerald-500 selection:text-white" id="orderspot-collect-app">
+      {/* Demo Mode Notice Banner */}
+      {!user && isDemoMode && (
+        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border-b border-emerald-500/30 px-3.5 sm:px-8 py-2.5 flex flex-wrap items-center justify-between gap-2.5 text-xs sm:text-sm sticky top-0 z-40 backdrop-blur-md">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+            <span className="text-emerald-300 font-medium">
+              <strong className="text-white">OrderSpot Collect Live Demo:</strong> Test WhatsApp reminders, manual calling & payment reconciliation in sandbox mode.
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setIsDemoMode(false);
+                if (typeof window !== 'undefined') {
+                  window.history.pushState({}, '', '/orderspot-collect');
+                }
+              }}
+              className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Vendor Sign In</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 bg-emerald-600 text-white px-4 sm:px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom duration-200 max-w-[90vw]">
@@ -959,15 +1045,30 @@ export default function OrderSpotCollectPage() {
               >
                 <Settings className="w-3.5 h-3.5 text-slate-300" />
               </button>
-              <button
-                onClick={handleSignOut}
-                aria-label="Sign Out"
-                title="Sign Out"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 border border-rose-500/30 active:scale-95 transition-all text-[11px] font-semibold"
-              >
-                <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                <span>Logout</span>
-              </button>
+              {user ? (
+                <button
+                  onClick={handleSignOut}
+                  aria-label="Sign Out"
+                  title="Sign Out"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 border border-rose-500/30 active:scale-95 transition-all text-[11px] font-semibold"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Logout</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setIsDemoMode(false);
+                    if (typeof window !== 'undefined') {
+                      window.history.pushState({}, '', '/orderspot-collect');
+                    }
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/30 active:scale-95 transition-all text-[11px] font-bold"
+                >
+                  <LogIn className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Sign In</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -1016,7 +1117,7 @@ export default function OrderSpotCollectPage() {
               <span>Import Tally</span>
             </button>
 
-            {/* Desktop Settings & Logout */}
+            {/* Desktop Settings & Logout / Sign In */}
             <div className="hidden sm:flex items-center gap-2">
               <button
                 onClick={() => setIsSettingsOpen(true)}
@@ -1025,14 +1126,29 @@ export default function OrderSpotCollectPage() {
                 <Settings className="w-4 h-4 text-slate-400" />
                 <span>Settings</span>
               </button>
-              <button
-                onClick={handleSignOut}
-                title="Sign out of OrderSpot Collect"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-rose-300 hover:text-rose-200 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-colors cursor-pointer active:scale-95 text-xs sm:text-sm font-semibold"
-              >
-                <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                <span>Logout</span>
-              </button>
+              {user ? (
+                <button
+                  onClick={handleSignOut}
+                  title="Sign out of OrderSpot Collect"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-rose-300 hover:text-rose-200 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-colors cursor-pointer active:scale-95 text-xs sm:text-sm font-semibold"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Logout</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setIsDemoMode(false);
+                    if (typeof window !== 'undefined') {
+                      window.history.pushState({}, '', '/orderspot-collect');
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-slate-950 font-bold bg-emerald-500 hover:bg-emerald-400 border border-emerald-400 shadow-md shadow-emerald-500/20 transition-all cursor-pointer active:scale-95 text-xs sm:text-sm"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Vendor Sign In</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1300,24 +1416,36 @@ export default function OrderSpotCollectPage() {
                     </div>
 
                     {/* Action Bar (Large touch targets for mobile) */}
-                    <div className="pt-2 border-t border-slate-800/60 flex items-center gap-2">
+                    <div className="pt-2 border-t border-slate-800/60 flex flex-wrap items-center gap-2">
                       {!isPaid && (
                         <button
                           onClick={() => handleSendWhatsAppReminder(inv)}
-                          className="flex-1 h-10 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-600/20 cursor-pointer"
+                          className="flex-1 min-w-[120px] h-10 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-600/20 cursor-pointer"
                         >
                           <Send className="w-3.5 h-3.5" />
                           <span>Remind WhatsApp</span>
                         </button>
                       )}
 
-                      <button
-                        onClick={() => handleOpenQrModal(inv)}
-                        title="UPI QR"
-                        className="h-10 w-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 flex items-center justify-center border border-slate-700 cursor-pointer shrink-0"
+                      {/* Direct Call Action */}
+                      <a
+                        href={`tel:${inv.phone?.replace(/[^0-9+]/g, '')}`}
+                        title={`Call ${inv.customerName} (${inv.phone})`}
+                        className="h-10 w-10 rounded-xl bg-blue-500/10 hover:bg-blue-600 active:scale-95 text-blue-400 hover:text-white flex items-center justify-center border border-blue-500/30 cursor-pointer shrink-0 transition-all"
                       >
-                        <QrCode className="w-4 h-4 text-slate-300" />
-                      </button>
+                        <PhoneCall className="w-4 h-4" />
+                      </a>
+
+                      {!isPaid && (
+                        <button
+                          onClick={() => handleMarkAsPaid(inv)}
+                          title="Mark Paid"
+                          className="h-10 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-600 text-emerald-400 hover:text-white active:scale-95 flex items-center justify-center gap-1.5 text-xs font-bold border border-emerald-500/30 cursor-pointer shrink-0 transition-all shadow-sm"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Mark Paid</span>
+                        </button>
+                      )}
 
                       <button
                         onClick={() => setEditingInvoice(inv)}
@@ -1326,16 +1454,6 @@ export default function OrderSpotCollectPage() {
                       >
                         <Edit2 className="w-4 h-4 text-slate-400 hover:text-emerald-400" />
                       </button>
-
-                      {!isPaid && (
-                        <button
-                          onClick={() => handleMarkAsPaid(inv)}
-                          title="Mark Paid"
-                          className="h-10 w-10 rounded-xl bg-slate-800 hover:bg-emerald-950 text-slate-300 hover:text-emerald-400 active:scale-95 flex items-center justify-center border border-slate-700 cursor-pointer shrink-0"
-                        >
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        </button>
-                      )}
 
                       <button
                         onClick={() => setDeleteConfirmInvoice(inv)}
@@ -1505,14 +1623,26 @@ export default function OrderSpotCollectPage() {
                                 </button>
                               )}
 
-                              {/* View Scannable UPI QR */}
-                              <button
-                                onClick={() => handleOpenQrModal(inv)}
-                                title="Generate UPI QR"
-                                className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 flex items-center justify-center transition-colors border border-slate-700 cursor-pointer shrink-0"
+                              {/* Direct Call Customer Button */}
+                              <a
+                                href={`tel:${inv.phone?.replace(/[^0-9+]/g, '')}`}
+                                title={`Call ${inv.customerName} (${inv.phone})`}
+                                className="h-9 w-9 rounded-xl bg-blue-500/10 hover:bg-blue-600 text-blue-400 hover:text-white active:scale-95 flex items-center justify-center transition-all border border-blue-500/30 cursor-pointer shrink-0 shadow-sm"
                               >
-                                <QrCode className="w-4 h-4 text-slate-300" />
-                              </button>
+                                <PhoneCall className="w-4 h-4" />
+                              </a>
+
+                              {/* Mark as Paid Quick Action */}
+                              {!isPaid && (
+                                <button
+                                  onClick={() => handleMarkAsPaid(inv)}
+                                  title="Mark as Paid"
+                                  className="h-9 px-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-600 text-emerald-400 hover:text-white active:scale-95 flex items-center justify-center gap-1.5 transition-all border border-emerald-500/30 cursor-pointer shrink-0 text-xs font-bold shadow-sm"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Mark Paid</span>
+                                </button>
+                              )}
 
                               {/* Edit / Record Partial Payment */}
                               <button
@@ -1522,17 +1652,6 @@ export default function OrderSpotCollectPage() {
                               >
                                 <Edit2 className="w-4 h-4 text-slate-400 hover:text-emerald-400" />
                               </button>
-
-                              {/* Mark as Paid Quick Action */}
-                              {!isPaid && (
-                                <button
-                                  onClick={() => handleMarkAsPaid(inv)}
-                                  title="Mark as Paid"
-                                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-emerald-950 text-slate-300 hover:text-emerald-400 active:scale-95 flex items-center justify-center transition-colors border border-slate-700 cursor-pointer shrink-0"
-                                >
-                                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                </button>
-                              )}
 
                               {/* Delete Bill */}
                               <button
