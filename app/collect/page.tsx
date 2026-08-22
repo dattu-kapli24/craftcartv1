@@ -942,32 +942,6 @@ export default function OrderSpotCollectPage() {
   // -------------------------------------------------------------
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased selection:bg-emerald-500 selection:text-white" id="orderspot-collect-app">
-      {/* Demo Mode Notice Banner */}
-      {!user && isDemoMode && (
-        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border-b border-emerald-500/30 px-3.5 sm:px-8 py-2.5 flex flex-wrap items-center justify-between gap-2.5 text-xs sm:text-sm sticky top-0 z-40 backdrop-blur-md">
-          <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="text-emerald-300 font-medium">
-              <strong className="text-white">OrderSpot Collect Live Demo:</strong> Test WhatsApp reminders, manual calling & payment reconciliation in sandbox mode.
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                setIsDemoMode(false);
-                if (typeof window !== 'undefined') {
-                  window.history.pushState({}, '', '/orderspot-collect');
-                }
-              }}
-              className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer"
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Vendor Sign In</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 bg-emerald-600 text-white px-4 sm:px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom duration-200 max-w-[90vw]">
@@ -991,16 +965,6 @@ export default function OrderSpotCollectPage() {
                   <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                     UPI Auto
                   </span>
-                  {user ? (
-                    <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                      Cloud Synced
-                    </span>
-                  ) : (
-                    <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      Demo Mode
-                    </span>
-                  )}
                 </div>
                 <p className="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1.5 flex-wrap">
                   <button
@@ -1673,8 +1637,8 @@ export default function OrderSpotCollectPage() {
           )}
         </div>
 
-        {/* 5. FLOATING MULTI-SELECT BULK ACTION BAR */}
-        {(selectedInvoiceIds.length > 0 || metrics.overdueCount > 0) && (
+        {/* 5. FLOATING MULTI-SELECT BULK ACTION BAR (Only appears when vendor explicitly selects invoices) */}
+        {selectedInvoiceIds.length > 0 && (
           <div className="fixed bottom-4 left-4 right-4 sm:static z-40 bg-slate-900/95 sm:bg-slate-900 border border-emerald-500/40 sm:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-2xl backdrop-blur-lg flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 animate-in slide-in-from-bottom duration-200">
             <div className="flex items-center justify-between sm:justify-start gap-3">
               <div className="flex items-center gap-2">
@@ -1683,37 +1647,25 @@ export default function OrderSpotCollectPage() {
                 </div>
                 <div>
                   <span className="text-xs sm:text-sm font-bold text-white block leading-tight">
-                    {selectedInvoiceIds.length > 0
-                      ? `${selectedInvoiceIds.length} Bills Selected`
-                      : `${metrics.overdueCount} Overdue Bills`}
+                    {selectedInvoiceIds.length} Bills Selected
                   </span>
                   <span className="text-[11px] text-slate-400">
-                    {selectedInvoiceIds.length > 0
-                      ? `Total: ₹${selectedInvoicesList.reduce((s, i) => s + i.amount, 0).toLocaleString('en-IN')}`
-                      : `Total Overdue: ₹${metrics.overdueAmount.toLocaleString('en-IN')}`}
+                    Total: ₹{selectedInvoicesList.reduce((s, i) => s + i.amount, 0).toLocaleString('en-IN')}
                   </span>
                 </div>
               </div>
 
-              {selectedInvoiceIds.length > 0 && (
-                <button
-                  onClick={() => setSelectedInvoiceIds([])}
-                  className="text-xs text-slate-400 hover:text-white underline cursor-pointer"
-                >
-                  Clear
-                </button>
-              )}
+              <button
+                onClick={() => setSelectedInvoiceIds([])}
+                className="text-xs text-slate-400 hover:text-white underline cursor-pointer"
+              >
+                Clear
+              </button>
             </div>
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() =>
-                  handleBatchRemind(
-                    selectedInvoiceIds.length > 0
-                      ? selectedInvoicesList
-                      : invoices.filter((i) => i.status === 'OVERDUE')
-                  )
-                }
+                onClick={() => handleBatchRemind(selectedInvoicesList)}
                 disabled={isBatchReminding}
                 className="w-full sm:w-auto min-h-[44px] sm:min-h-[40px] px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
@@ -1721,9 +1673,7 @@ export default function OrderSpotCollectPage() {
                 <span>
                   {isBatchReminding
                     ? 'Dispatching Reminders...'
-                    : selectedInvoiceIds.length > 0
-                    ? `Send WhatsApp to ${selectedInvoiceIds.length} Selected`
-                    : `Remind All ${metrics.overdueCount} Overdue`}
+                    : `Send WhatsApp to ${selectedInvoiceIds.length} Selected`}
                 </span>
               </button>
             </div>
