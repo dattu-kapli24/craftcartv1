@@ -19,6 +19,7 @@ try {
 } catch (e) {}
 import {
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
@@ -29,6 +30,67 @@ import { app, auth, db } from '../firebase-service.js';
 import { Vendor, Invoice, ReminderLog } from '../src/types/collect';
 
 // ---------------- AUTH HELPER FUNCTIONS ----------------
+
+export interface RegisterVendorPayload {
+  email: string;
+  password: string;
+  businessName: string;
+  phone: string;
+  upiId: string;
+  payeeName?: string;
+  paymentTerms?: string;
+  whatsappTemplate?: string;
+}
+
+export async function registerVendorWithTrial(
+  payload: RegisterVendorPayload
+): Promise<{ success: boolean; user?: User; vendor?: Vendor; error?: string }> {
+  try {
+    if (!auth) throw new Error('Auth service is initializing. Please try again in a moment.');
+    const email = payload.email.trim();
+    const pass = payload.password;
+
+    // 1. Create User in Firebase Auth
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    const userId = cred.user.uid;
+
+    // 2. Setup 14-Day Free Trial
+    const now = new Date();
+    const trialEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+    const vendorProfile: Vendor = {
+      id: userId,
+      email: email,
+      businessName: payload.businessName.trim() || 'My Business Mart',
+      upiId: payload.upiId.trim() || `${payload.businessName.toLowerCase().replace(/[^a-z0-9]/g, '')}@upi`,
+      payeeName: (payload.payeeName || payload.businessName).trim(),
+      phone: payload.phone.trim(),
+      paymentTerms: payload.paymentTerms?.trim() || 'Net 15 Days',
+      whatsappTemplate: payload.whatsappTemplate || DEFAULT_TEMPLATE,
+      whatsappTemplateName: 'order_spot_invoice_reminder',
+      planStatus: 'TRIAL_ACTIVE',
+      trialStartDate: now.toISOString(),
+      trialEndDate: trialEnd.toISOString(),
+      trialDaysLeft: 14,
+      updatedAt: now.toISOString()
+    };
+
+    // 3. Save Vendor Document to Firestore
+    await saveVendorProfile(userId, vendorProfile);
+
+    return { success: true, user: cred.user, vendor: vendorProfile };
+  } catch (err: any) {
+    let msg = err?.message || 'Registration failed';
+    if (err?.code === 'auth/email-already-in-use') {
+      msg = 'An account with this email already exists. Please Sign In instead.';
+    } else if (err?.code === 'auth/weak-password') {
+      msg = 'Password should be at least 6 characters long.';
+    } else if (err?.code === 'auth/invalid-email') {
+      msg = 'Please enter a valid email address.';
+    }
+    return { success: false, error: msg };
+  }
+}
 
 export async function loginWithEmail(email: string, pass: string): Promise<{ success: boolean; user?: User; error?: string }> {
   try {

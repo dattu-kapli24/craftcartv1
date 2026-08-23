@@ -39,13 +39,18 @@ import {
   Sparkles,
   Database,
   Check,
-  PhoneCall
+  PhoneCall,
+  Building2,
+  Gift,
+  ArrowRight
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { Vendor, Invoice, InvoiceStatus, ReminderLog } from '../../src/types/collect';
 import {
   subscribeToAuth,
   loginWithEmail,
+  registerVendorWithTrial,
+  RegisterVendorPayload,
   resetPassword,
   logoutUser,
   getVendorProfile,
@@ -68,8 +73,8 @@ export default function OrderSpotCollectPage() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [vendorSlug, setVendorSlug] = useState<string | null>(null);
 
-  // Vendor Admin Login & Password Reset State
-  const [authView, setAuthView] = useState<'LOGIN' | 'FORGOT_PASSWORD'>('LOGIN');
+  // Vendor Admin Login, Register (14-Day Trial) & Password Reset State
+  const [authView, setAuthView] = useState<'LOGIN' | 'FORGOT_PASSWORD' | 'REGISTER'>('LOGIN');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -77,6 +82,19 @@ export default function OrderSpotCollectPage() {
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+
+  // Self-Registration Form State (14-Day Free Trial)
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regBusinessName, setRegBusinessName] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regUpiId, setRegUpiId] = useState('');
+  const [regPayeeName, setRegPayeeName] = useState('');
+  const [regPaymentTerms, setRegPaymentTerms] = useState('Net 15 Days');
+  const [regWhatsappTemplate, setRegWhatsappTemplate] = useState(
+    `Dear {{customer_name}},\n\nThis is a gentle payment reminder from {{business_name}} regarding Invoice #{{invoice_no}} for ₹{{amount}}, which is due on {{due_date}}.\n\nKindly complete the payment using this instant UPI link:\n{{upi_link}}\n\nThank you for your business!`
+  );
+  const [regStep, setRegStep] = useState<1 | 2>(1);
 
   // Vendor Profile State
   const [vendor, setVendor] = useState<Vendor>({
@@ -100,11 +118,28 @@ export default function OrderSpotCollectPage() {
 
   // Modals & Drawers
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isManageMenuOpen, setIsManageMenuOpen] = useState(false);
+  const manageMenuRef = useRef<HTMLDivElement>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [deleteConfirmInvoice, setDeleteConfirmInvoice] = useState<Invoice | null>(null);
   const [qrModalInvoice, setQrModalInvoice] = useState<Invoice | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [isAddInvoiceOpen, setIsAddInvoiceOpen] = useState(false);
+
+  // Close Manage Ledger dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (manageMenuRef.current && !manageMenuRef.current.contains(event.target as Node)) {
+        setIsManageMenuOpen(false);
+      }
+    };
+    if (isManageMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isManageMenuOpen]);
 
   // Form State for Manual Bill Addition
   const [manualInvoiceNo, setManualInvoiceNo] = useState('');
@@ -133,6 +168,14 @@ export default function OrderSpotCollectPage() {
 
     // If explicit login or portal URL
     if (
+      searchParams.get('action') === 'register' ||
+      searchParams.get('trial') === 'true' ||
+      path === 'register' ||
+      path === 'signup'
+    ) {
+      setAuthView('REGISTER');
+      setIsDemoMode(false);
+    } else if (
       path === 'orderspot-collect' ||
       path.startsWith('orderspot-collect/') ||
       path === 'collect' ||
@@ -336,6 +379,62 @@ export default function OrderSpotCollectPage() {
       }
     } catch (err: any) {
       setAuthError(err?.message || 'An error occurred while requesting password reset.');
+    } finally {
+      setIsSubmittingAuth(false);
+    }
+  };
+
+  // Handle Business Name Change with auto-derived UPI VPA & Payee Name
+  const handleBusinessNameChange = (name: string) => {
+    setRegBusinessName(name);
+    if (!regPayeeName || regPayeeName === regBusinessName) {
+      setRegPayeeName(name);
+    }
+    const cleanSlug = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (cleanSlug && (!regUpiId || regUpiId.endsWith('@icici') || regUpiId.endsWith('@upi'))) {
+      setRegUpiId(`${cleanSlug}@icici`);
+    }
+  };
+
+  // Handle Self-Registration Submit (14-Day Free Trial)
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regEmail.trim() || !regPassword || !regBusinessName.trim() || !regPhone.trim()) {
+      setAuthError('Please fill in your business email, password, business name, and mobile number.');
+      return;
+    }
+    if (regPassword.length < 6) {
+      setAuthError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setAuthError(null);
+    setAuthSuccess(null);
+    setIsSubmittingAuth(true);
+
+    try {
+      const payload: RegisterVendorPayload = {
+        email: regEmail.trim(),
+        password: regPassword,
+        businessName: regBusinessName.trim(),
+        phone: sanitizeIndianPhone(regPhone.trim()) || regPhone.trim(),
+        upiId: regUpiId.trim() || `${regBusinessName.toLowerCase().replace(/[^a-z0-9]/g, '')}@icici`,
+        payeeName: (regPayeeName || regBusinessName).trim(),
+        paymentTerms: regPaymentTerms.trim(),
+        whatsappTemplate: regWhatsappTemplate
+      };
+
+      const res = await registerVendorWithTrial(payload);
+      if (res.success && res.vendor) {
+        setVendor(res.vendor);
+        setInvoices([]);
+        showToast('🎉 Vendor Account Created! 14-Day Free Trial is now active.');
+        setIsDemoMode(false);
+      } else {
+        setAuthError(res.error || 'Registration could not be completed. Please check your details.');
+      }
+    } catch (err: any) {
+      setAuthError(err?.message || 'An unexpected error occurred during registration.');
     } finally {
       setIsSubmittingAuth(false);
     }
@@ -703,7 +802,7 @@ export default function OrderSpotCollectPage() {
   }
 
   // -------------------------------------------------------------
-  // VENDOR ADMIN LOGIN & FORGOT PASSWORD SCREEN (When Not Logged In)
+  // VENDOR ADMIN LOGIN, REGISTRATION & PASSWORD SCREEN (When Not Logged In)
   // -------------------------------------------------------------
   if (!user && !isDemoMode) {
     return (
@@ -712,7 +811,7 @@ export default function OrderSpotCollectPage() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-emerald-500/10 blur-[120px] pointer-events-none rounded-full" />
         <div className="absolute bottom-0 right-0 w-[500px] h-[300px] bg-blue-500/5 blur-[100px] pointer-events-none rounded-full" />
 
-        {/* Top Minimal Header without storefront button */}
+        {/* Top Minimal Header */}
         <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md px-4 sm:px-8 py-4 relative z-10">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -729,23 +828,87 @@ export default function OrderSpotCollectPage() {
                 <p className="text-[11px] text-slate-400">Payment Recovery & Automated Reminders</p>
               </div>
             </div>
+
+            {/* Back to Live Demo Button */}
+            <button
+              onClick={() => {
+                setIsDemoMode(true);
+                if (typeof window !== 'undefined') {
+                  window.history.pushState({}, '', '/');
+                }
+              }}
+              className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Live Demo</span>
+            </button>
           </div>
         </header>
 
-        {/* Main Login / Reset Container */}
+        {/* Main Auth Container */}
         <main className="flex-1 flex items-center justify-center p-4 sm:p-6 relative z-10 my-auto">
-          <div className="max-w-md w-full bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6">
+          <div className={`w-full ${authView === 'REGISTER' ? 'max-w-2xl' : 'max-w-md'} bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6 transition-all duration-300`}>
             
-            {/* Form Header */}
+            {/* Segmented Mode Switcher (Sign In vs 14-Day Free Trial) */}
+            {authView !== 'FORGOT_PASSWORD' && (
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-950/80 border border-slate-800 rounded-2xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthView('LOGIN');
+                    setAuthError(null);
+                    setAuthSuccess(null);
+                  }}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    authView === 'LOGIN'
+                      ? 'bg-slate-800 text-white shadow-md border border-slate-700'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Vendor Sign In</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthView('REGISTER');
+                    setAuthError(null);
+                    setAuthSuccess(null);
+                  }}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    authView === 'REGISTER'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md font-extrabold'
+                      : 'text-emerald-400 hover:text-emerald-300'
+                  }`}
+                >
+                  <Gift className="w-3.5 h-3.5" />
+                  <span>14-Day Free Trial</span>
+                </button>
+              </div>
+            )}
+
+            {/* Header Description */}
             <div className="space-y-1.5 text-center">
-              <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 text-emerald-400 border border-emerald-500/30 mb-2">
-                {authView === 'LOGIN' ? <LogIn className="w-6 h-6" /> : <KeyRound className="w-6 h-6" />}
+              <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 text-emerald-400 border border-emerald-500/30 mb-1">
+                {authView === 'REGISTER' ? (
+                  <Gift className="w-6 h-6 text-emerald-400" />
+                ) : authView === 'LOGIN' ? (
+                  <LogIn className="w-6 h-6" />
+                ) : (
+                  <KeyRound className="w-6 h-6" />
+                )}
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                {authView === 'LOGIN' ? 'Vendor Admin Sign In' : 'Reset Vendor Password'}
+                {authView === 'REGISTER'
+                  ? 'Start Your 14-Day Free Trial'
+                  : authView === 'LOGIN'
+                  ? 'Vendor Admin Sign In'
+                  : 'Reset Vendor Password'}
               </h2>
-              <p className="text-xs sm:text-sm text-slate-400 max-w-xs mx-auto">
-                {authView === 'LOGIN'
+              <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
+                {authView === 'REGISTER'
+                  ? 'Self-register your shop in 2 minutes. Auto WhatsApp reminders & instant UPI collection with zero setup fee.'
+                  : authView === 'LOGIN'
                   ? 'Sign in to access your collection dashboard, sync invoices, and automate WhatsApp reminders.'
                   : 'Enter your registered vendor email and we will send a password reset link directly to your inbox.'}
               </p>
@@ -767,8 +930,293 @@ export default function OrderSpotCollectPage() {
               </div>
             )}
 
-            {/* LOGIN FORM */}
-            {authView === 'LOGIN' ? (
+            {/* 1. SELF-REGISTRATION FORM (14-Day Free Trial) */}
+            {authView === 'REGISTER' && (
+              <form onSubmit={handleRegisterSubmit} className="space-y-5">
+                {/* Step indicator tabs */}
+                <div className="flex items-center justify-center gap-2 pb-1 border-b border-slate-800 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setRegStep(1)}
+                    className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      regStep === 1
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <span className="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center text-[10px]">1</span>
+                    <span>Account & Business Identity</span>
+                  </button>
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-600" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!regBusinessName || !regEmail || !regPassword) {
+                        setAuthError('Please fill in business name, email, and password first.');
+                        return;
+                      }
+                      setAuthError(null);
+                      setRegStep(2);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      regStep === 2
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <span className="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center text-[10px]">2</span>
+                    <span>UPI & WhatsApp Template</span>
+                  </button>
+                </div>
+
+                {/* STEP 1: BUSINESS & ACCOUNT CREDENTIALS */}
+                {regStep === 1 && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-slate-300">
+                        Business / Shop Name <span className="text-rose-400">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                          <Building2 className="w-4 h-4" />
+                        </div>
+                        <input
+                          type="text"
+                          required
+                          value={regBusinessName}
+                          onChange={(e) => handleBusinessNameChange(e.target.value)}
+                          placeholder="e.g. Sri Balaji Wholesale Distributors"
+                          className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-700/80 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-white text-sm placeholder-slate-500 outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-slate-300">
+                          Business Email <span className="text-rose-400">*</span>
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <Mail className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="email"
+                            required
+                            value={regEmail}
+                            onChange={(e) => setRegEmail(e.target.value)}
+                            placeholder="sales@yourshop.com"
+                            className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-700/80 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-white text-sm placeholder-slate-500 outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-slate-300">
+                          WhatsApp Contact Number <span className="text-rose-400">*</span>
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <Phone className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="tel"
+                            required
+                            value={regPhone}
+                            onChange={(e) => setRegPhone(e.target.value)}
+                            placeholder="9876543210"
+                            className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-700/80 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-white text-sm placeholder-slate-500 outline-none transition-all font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-slate-300">
+                        Create Vendor Password (min 6 characters) <span className="text-rose-400">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                          <Lock className="w-4 h-4" />
+                        </div>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          required
+                          value={regPassword}
+                          onChange={(e) => setRegPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full pl-10 pr-10 py-2.5 bg-slate-950/80 border border-slate-700/80 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-white text-sm placeholder-slate-500 outline-none transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!regBusinessName.trim() || !regEmail.trim() || !regPassword) {
+                          setAuthError('Please fill in business name, email, and password.');
+                          return;
+                        }
+                        if (regPassword.length < 6) {
+                          setAuthError('Password must be at least 6 characters.');
+                          return;
+                        }
+                        setAuthError(null);
+                        setRegStep(2);
+                      }}
+                      className="w-full min-h-[44px] py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+                    >
+                      <span>Continue to UPI & WhatsApp Template</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                {/* STEP 2: UPI ID, PAYEE & PRE-FILLED WHATSAPP TEMPLATE */}
+                {regStep === 2 && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-slate-300">
+                          Your Bank UPI ID (VPA) <span className="text-rose-400">*</span>
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <QrCode className="w-4 h-4 text-emerald-400" />
+                          </div>
+                          <input
+                            type="text"
+                            required
+                            value={regUpiId}
+                            onChange={(e) => setRegUpiId(e.target.value)}
+                            placeholder="yourshop@icici"
+                            className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-700/80 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-white text-sm font-mono placeholder-slate-500 outline-none transition-all"
+                          />
+                        </div>
+                        <p className="text-[10px] text-slate-400">Direct settlement to your bank without commission.</p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-slate-300">
+                          Payee Registered Name on Bank
+                        </label>
+                        <input
+                          type="text"
+                          value={regPayeeName}
+                          onChange={(e) => setRegPayeeName(e.target.value)}
+                          placeholder="Official Bank Account Name"
+                          className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-700/80 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-white text-sm placeholder-slate-500 outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-slate-300">
+                        Default Payment Terms
+                      </label>
+                      <select
+                        value={regPaymentTerms}
+                        onChange={(e) => setRegPaymentTerms(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-700/80 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-white text-sm outline-none transition-all"
+                      >
+                        <option value="Net 7 Days">Net 7 Days (Weekly cycle)</option>
+                        <option value="Net 15 Days">Net 15 Days (Bi-weekly cycle)</option>
+                        <option value="Net 30 Days">Net 30 Days (Monthly cycle)</option>
+                        <option value="Net 45 Days">Net 45 Days (Extended credit)</option>
+                        <option value="Due on Receipt">Due on Receipt (Immediate)</option>
+                      </select>
+                    </div>
+
+                    {/* Pre-filled WhatsApp Message Template Editor */}
+                    <div className="space-y-2 pt-1 border-t border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+                          <Send className="w-3.5 h-3.5" />
+                          <span>Pre-filled WhatsApp Reminder Template</span>
+                        </label>
+                        <span className="text-[10px] text-slate-500 font-mono">Editable anytime in settings</span>
+                      </div>
+
+                      <textarea
+                        rows={4}
+                        value={regWhatsappTemplate}
+                        onChange={(e) => setRegWhatsappTemplate(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-slate-950/90 border border-slate-700/80 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-white text-xs font-mono outline-none transition-all resize-none"
+                      />
+
+                      {/* Tag insertion helpers */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] text-slate-400 font-medium">Quick Tags:</span>
+                        {['{{customer_name}}', '{{amount}}', '{{invoice_no}}', '{{due_date}}', '{{upi_link}}', '{{business_name}}'].map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => setRegWhatsappTemplate((prev) => `${prev} ${tag}`)}
+                            className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-mono border border-slate-700 cursor-pointer active:scale-95"
+                          >
+                            + {tag.replace(/[{}]/g, '')}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Live WhatsApp Bubble Preview */}
+                      <div className="p-3 rounded-2xl bg-emerald-950/30 border border-emerald-500/20 space-y-1 text-xs">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" /> Live Customer WhatsApp Preview
+                        </span>
+                        <div className="bg-emerald-900/40 p-2.5 rounded-xl border border-emerald-500/20 text-slate-200 text-[11px] leading-relaxed whitespace-pre-line font-sans">
+                          {regWhatsappTemplate
+                            .replace(/\{\{customer_name\}\}/g, 'Shree Ram General Store')
+                            .replace(/\{\{business_name\}\}/g, regBusinessName || 'Your Business Name')
+                            .replace(/\{\{invoice_no\}\}/g, 'OS-8910')
+                            .replace(/\{\{amount\}\}/g, '25,400')
+                            .replace(/\{\{due_date\}\}/g, '28-Aug-2026')
+                            .replace(/\{\{upi_link\}\}/g, `upi://pay?pa=${regUpiId || 'yourshop@icici'}&pn=${encodeURIComponent(regBusinessName || 'OrderSpot')}&am=25400&cu=INR`)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setRegStep(1)}
+                        className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer"
+                      >
+                        ← Back
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={isSubmittingAuth}
+                        className="flex-1 min-h-[44px] py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-[0.99] text-slate-950 font-black text-sm rounded-xl shadow-xl shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                      >
+                        {isSubmittingAuth ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>Creating Vendor Account & Free Trial...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 text-slate-950" />
+                            <span>Complete & Activate 14-Day Free Trial</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </form>
+            )}
+
+            {/* 2. SIGN IN FORM */}
+            {authView === 'LOGIN' && (
               <form onSubmit={handleLoginSubmit} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-slate-300">
@@ -852,24 +1300,24 @@ export default function OrderSpotCollectPage() {
                   <div className="flex-grow border-t border-slate-800"></div>
                 </div>
 
-                {/* Sandbox / Demo option */}
+                {/* Switch to Free Trial Register */}
                 <button
                   type="button"
                   onClick={() => {
-                    setIsDemoMode(true);
-                    if (typeof window !== 'undefined') {
-                      window.history.pushState({}, '', '/');
-                    }
-                    showToast('Welcome to OrderSpot Collect Live Demo!');
+                    setAuthView('REGISTER');
+                    setAuthError(null);
+                    setAuthSuccess(null);
                   }}
-                  className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 active:scale-[0.99] text-slate-300 hover:text-white font-medium text-xs rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 text-emerald-300 font-bold text-xs rounded-xl border border-emerald-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Explore Interactive Demo Sandbox →</span>
+                  <Gift className="w-4 h-4 text-emerald-400" />
+                  <span>New Vendor? Start 14-Day Free Trial →</span>
                 </button>
               </form>
-            ) : (
-              /* FORGOT PASSWORD FORM */
+            )}
+
+            {/* 3. FORGOT PASSWORD FORM */}
+            {authView === 'FORGOT_PASSWORD' && (
               <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-slate-300">
@@ -927,7 +1375,7 @@ export default function OrderSpotCollectPage() {
             <div className="pt-2 text-center border-t border-slate-800/80">
               <p className="text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Protected by Firebase Cloud Auth & Firestore Sync</span>
+                <span>Protected by Firebase Cloud Auth & Firestore Database</span>
               </p>
             </div>
 
@@ -950,84 +1398,73 @@ export default function OrderSpotCollectPage() {
         </div>
       )}
 
-      {/* 1. TOP NAVIGATION HEADER (Mobile Stack & Touch Friendly) */}
-      <header className="border-b border-slate-800 bg-slate-900/95 backdrop-blur-md px-3.5 sm:px-8 py-3.5 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-          {/* Brand & Store Details */}
-          <div className="flex items-center justify-between sm:justify-start gap-3">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 shadow-lg shadow-emerald-500/10 shrink-0">
-                <Zap className="w-5 h-5 sm:w-6 sm:h-6" />
+      {/* 1. TOP NAVIGATION HEADER (Spacious, Scannable & Mobile-Optimized) */}
+      <header className="border-b border-slate-800 bg-slate-900/95 backdrop-blur-md px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-2.5 md:gap-4 items-stretch md:items-center justify-between">
+          
+          {/* Top/Left Section: Platform Identity, UPI Auto & Store Details */}
+          <div className="flex items-center justify-between md:justify-start gap-2.5 sm:gap-3.5 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 shadow-lg shadow-emerald-500/10 shrink-0">
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-lg sm:text-xl font-black text-white tracking-tight">OrderSpot Collect</h1>
-                  <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <h1 className="text-sm sm:text-base lg:text-lg font-black text-white tracking-tight truncate">
+                    OrderSpot Collect
+                  </h1>
+                  <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
                     UPI Auto
                   </span>
                 </div>
-                <p className="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1.5 flex-wrap">
+                <div className="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1.5 truncate mt-0.5">
                   <button
                     onClick={() => setIsSettingsOpen(true)}
-                    className="hover:text-white transition-colors cursor-pointer font-medium max-w-[140px] sm:max-w-[200px] truncate"
+                    title="Click to view shop settings"
+                    className="text-emerald-400 hover:text-emerald-300 font-semibold truncate max-w-[150px] sm:max-w-[220px] transition-colors cursor-pointer text-left"
                   >
-                    {vendor.businessName}
+                    {vendor.businessName || 'Your Business'}
                   </button>
-                  <span className="text-slate-600">•</span>
+                  <span className="text-slate-600 shrink-0">•</span>
                   <button
                     onClick={() => setIsSettingsOpen(true)}
-                    className="text-emerald-400 hover:text-emerald-300 font-mono underline decoration-emerald-500/40 cursor-pointer text-[10px] sm:text-xs"
+                    title="Click to edit UPI ID"
+                    className="text-slate-300 hover:text-white font-mono text-[10px] sm:text-[11px] truncate max-w-[130px] sm:max-w-[160px] transition-colors cursor-pointer"
                   >
                     {vendor.upiId}
                   </button>
                   {user?.email && (
                     <>
-                      <span className="text-slate-600 hidden sm:inline">•</span>
-                      <span className="text-slate-400 text-[10px] sm:text-xs hidden sm:inline font-mono truncate max-w-[150px]">
+                      <span className="text-slate-600 hidden lg:inline shrink-0">•</span>
+                      <span className="text-slate-400 text-[10px] hidden lg:inline font-mono truncate max-w-[140px]">
                         {user.email}
                       </span>
                     </>
                   )}
-                </p>
+                </div>
               </div>
             </div>
 
-            {/* Mobile Header Quick Actions */}
-            <div className="flex items-center gap-1.5 sm:hidden">
-              <button
-                onClick={handleManualCloudSync}
-                disabled={isSyncingCloud}
-                title="Sync with Firebase Cloud"
-                className="p-2 rounded-xl bg-slate-800 text-emerald-400 hover:text-emerald-300 border border-slate-700 active:scale-95 transition-transform"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin' : ''}`} />
-              </button>
-              <button
-                onClick={() => setIsSettingsOpen(true)}
-                aria-label="Settings"
-                className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white border border-slate-700 active:scale-95 transition-transform"
-              >
-                <Settings className="w-3.5 h-3.5 text-slate-300" />
-              </button>
+            {/* Mobile-only quick profile/logout or trial badge to keep header balanced */}
+            <div className="flex items-center gap-1.5 md:hidden shrink-0">
               {user ? (
                 <button
                   onClick={handleSignOut}
-                  aria-label="Sign Out"
                   title="Sign Out"
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 border border-rose-500/30 active:scale-95 transition-all text-[11px] font-semibold"
+                  className="p-2 rounded-xl bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 border border-rose-500/30 transition-colors active:scale-95"
                 >
-                  <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                  <span>Logout</span>
+                  <LogOut className="w-4 h-4 text-rose-400" />
                 </button>
               ) : (
                 <button
                   onClick={() => {
+                    setAuthView('LOGIN');
                     setIsDemoMode(false);
                     if (typeof window !== 'undefined') {
                       window.history.pushState({}, '', '/orderspot-collect');
                     }
                   }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/30 active:scale-95 transition-all text-[11px] font-bold"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800 text-slate-200 hover:text-white border border-slate-700 active:scale-95 transition-all text-xs font-semibold"
                 >
                   <LogIn className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Sign In</span>
@@ -1036,20 +1473,10 @@ export default function OrderSpotCollectPage() {
             </div>
           </div>
 
-          {/* Action Buttons: Full-width touch targets on small screens */}
-          <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
-            {/* Manual Cloud Sync Button */}
-            <button
-              onClick={handleManualCloudSync}
-              disabled={isSyncingCloud}
-              title="Synchronize invoices and settings with Firebase Firestore"
-              className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 rounded-xl font-semibold text-xs sm:text-sm transition-all border border-slate-700 shadow-sm cursor-pointer active:scale-95 disabled:opacity-60"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin' : ''}`} />
-              <span className="hidden md:inline">{isSyncingCloud ? 'Syncing...' : 'Sync Cloud'}</span>
-            </button>
-
-            {/* Add Manual Bill */}
+          {/* Action Row: Primary + Add Bill, Manage Ledger & Trial / Profile Status */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 justify-between md:justify-end">
+            
+            {/* Primary Action Button: Prominent Emerald + Add Bill */}
             <button
               onClick={() => {
                 setManualInvoiceNo(`OS-${Date.now().toString().slice(-4)}`);
@@ -1059,13 +1486,84 @@ export default function OrderSpotCollectPage() {
                 setManualDueDate(new Date().toISOString().split('T')[0]);
                 setIsAddInvoiceOpen(true);
               }}
-              className="flex-1 sm:flex-initial min-h-[42px] sm:min-h-[38px] px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white rounded-xl font-medium text-xs sm:text-sm transition-all border border-slate-700 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+              className="flex-1 md:flex-initial min-h-[38px] sm:min-h-[40px] px-3.5 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
             >
-              <Plus className="w-4 h-4 text-emerald-400" />
+              <Plus className="w-4 h-4 text-white" />
               <span>+ Add Bill</span>
             </button>
 
-            {/* Import Tally Excel */}
+            {/* Background Configurations: Manage Ledger Dropdown */}
+            <div className="relative" ref={manageMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsManageMenuOpen(!isManageMenuOpen)}
+                className={`min-h-[38px] sm:min-h-[40px] px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl font-semibold text-xs sm:text-sm transition-all border border-slate-700 flex items-center gap-1.5 sm:gap-2 cursor-pointer active:scale-95 ${
+                  isManageMenuOpen ? 'bg-slate-700 border-slate-600 ring-2 ring-emerald-500/20' : ''
+                }`}
+                aria-expanded={isManageMenuOpen}
+              >
+                <Settings className="w-4 h-4 text-slate-400" />
+                <span>Manage Ledger</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isManageMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Manage Ledger Dropdown Menu */}
+              {isManageMenuOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-slate-700/90 rounded-2xl shadow-2xl backdrop-blur-xl p-1.5 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-800">
+                    Ledger Tools & Settings
+                  </div>
+
+                  {/* 1. Sync Cloud */}
+                  <button
+                    onClick={() => {
+                      setIsManageMenuOpen(false);
+                      handleManualCloudSync();
+                    }}
+                    disabled={isSyncingCloud}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-200 hover:text-emerald-400 hover:bg-slate-800/80 rounded-xl transition-colors text-left cursor-pointer"
+                  >
+                    <RefreshCw className={`w-4 h-4 text-emerald-400 shrink-0 ${isSyncingCloud ? 'animate-spin' : ''}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-slate-100">{isSyncingCloud ? 'Syncing...' : 'Sync Cloud'}</div>
+                      <div className="text-[10px] text-slate-400 truncate">Sync with Firebase Firestore</div>
+                    </div>
+                  </button>
+
+                  {/* 2. Import Tally */}
+                  <button
+                    onClick={() => {
+                      setIsManageMenuOpen(false);
+                      fileInputRef.current?.click();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-200 hover:text-emerald-400 hover:bg-slate-800/80 rounded-xl transition-colors text-left cursor-pointer"
+                  >
+                    <UploadCloud className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-slate-100">Import Tally / Excel</div>
+                      <div className="text-[10px] text-slate-400 truncate">Bulk upload .xlsx, .csv</div>
+                    </div>
+                  </button>
+
+                  {/* 3. Dashboard Settings */}
+                  <button
+                    onClick={() => {
+                      setIsManageMenuOpen(false);
+                      setIsSettingsOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-200 hover:text-emerald-400 hover:bg-slate-800/80 rounded-xl transition-colors text-left cursor-pointer"
+                  >
+                    <Settings className="w-4 h-4 text-slate-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-slate-100">Store & UPI Settings</div>
+                      <div className="text-[10px] text-slate-400 truncate">WhatsApp templates & UPI VPA</div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Hidden file input for Tally Import */}
             <input
               type="file"
               ref={fileInputRef}
@@ -1073,47 +1571,56 @@ export default function OrderSpotCollectPage() {
               accept=".xlsx, .xls, .csv"
               className="hidden"
             />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1 sm:flex-initial min-h-[42px] sm:min-h-[38px] px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <UploadCloud className="w-4 h-4" />
-              <span>Import Tally</span>
-            </button>
 
-            {/* Desktop Settings & Logout / Sign In */}
-            <div className="hidden sm:flex items-center gap-2">
-              <button
-                onClick={() => setIsSettingsOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium text-xs sm:text-sm transition-colors border border-slate-700 cursor-pointer active:scale-95"
-              >
-                <Settings className="w-4 h-4 text-slate-400" />
-                <span>Settings</span>
-              </button>
-              {user ? (
+            {/* Desktop-only: "14 Days Left" Badge & Sign In / User Profile */}
+            {user ? (
+              <div className="hidden md:flex items-center gap-2 pl-2 border-l border-slate-800">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full border border-emerald-500/30 text-emerald-400 bg-emerald-500/5 whitespace-nowrap">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>14 Days Left</span>
+                </span>
+                
                 <button
                   onClick={handleSignOut}
-                  title="Sign out of OrderSpot Collect"
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-rose-300 hover:text-rose-200 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-colors cursor-pointer active:scale-95 text-xs sm:text-sm font-semibold"
+                  title={`Signed in as ${user.email}. Click to sign out.`}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-rose-300 hover:text-rose-200 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-colors cursor-pointer active:scale-95 text-xs font-semibold"
                 >
                   <LogOut className="w-3.5 h-3.5 text-rose-400" />
                   <span>Logout</span>
                 </button>
-              ) : (
+              </div>
+            ) : (
+              <div className="hidden md:flex items-center gap-2 pl-2 border-l border-slate-800">
                 <button
                   onClick={() => {
+                    setAuthView('REGISTER');
+                    setIsDemoMode(false);
+                    if (typeof window !== 'undefined') {
+                      window.history.pushState({}, '', '/orderspot-collect?action=register');
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full border border-emerald-500/30 text-emerald-300 hover:text-white bg-emerald-500/5 hover:bg-emerald-500/15 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>14 Days Left</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setAuthView('LOGIN');
                     setIsDemoMode(false);
                     if (typeof window !== 'undefined') {
                       window.history.pushState({}, '', '/orderspot-collect');
                     }
                   }}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-slate-950 font-bold bg-emerald-500 hover:bg-emerald-400 border border-emerald-400 shadow-md shadow-emerald-500/20 transition-all cursor-pointer active:scale-95 text-xs sm:text-sm"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all cursor-pointer active:scale-95 text-xs font-semibold whitespace-nowrap"
                 >
-                  <LogIn className="w-4 h-4" />
-                  <span>Vendor Sign In</span>
+                  <LogIn className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Sign In</span>
                 </button>
-              )}
-            </div>
+              </div>
+            )}
+
           </div>
         </div>
       </header>

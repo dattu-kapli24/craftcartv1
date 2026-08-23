@@ -9,6 +9,11 @@ export interface Vendor {
   whatsappAccessToken?: string;
   whatsappPhoneNumberId?: string;
   whatsappTemplateName?: string;
+  email?: string;
+  planStatus?: 'TRIAL_ACTIVE' | 'ACTIVE' | 'EXPIRED';
+  trialStartDate?: string;
+  trialEndDate?: string;
+  trialDaysLeft?: number;
   updatedAt?: string;
 }
 
