@@ -8,8 +8,9 @@ import { Invoice } from '../src/types/collect';
  * Strips whitespace, hyphens, parenthesis, leading zeros, and prefixes.
  */
 export function sanitizeIndianPhone(phoneStr: string | number | null | undefined): string {
-  if (!phoneStr) return '+919876543210';
-  let cleaned = String(phoneStr).replace(/\D/g, '');
+  if (!phoneStr) return '';
+  const str = String(phoneStr).trim();
+  let cleaned = str.replace(/\D/g, '');
 
   if (cleaned.length === 12 && cleaned.startsWith('91')) {
     return '+' + cleaned;
@@ -19,11 +20,11 @@ export function sanitizeIndianPhone(phoneStr: string | number | null | undefined
     return '+91' + cleaned.substring(1);
   } else if (cleaned.length > 10 && !cleaned.startsWith('91')) {
     return '+' + cleaned;
-  } else if (cleaned.length > 0) {
-    return '+91' + cleaned.padStart(10, '0').slice(-10);
+  } else if (cleaned.length > 0 && cleaned.length < 10) {
+    return '+91' + cleaned;
   }
 
-  return '+919876543210';
+  return str;
 }
 
 /**

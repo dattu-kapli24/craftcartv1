@@ -288,14 +288,7 @@ export async function saveInvoice(invoice: Invoice): Promise<void> {
     updatedAt: new Date().toISOString()
   });
 
-  try {
-    const docRef = doc(db, 'invoices', invoice.id);
-    await setDoc(docRef, cleanData, { merge: true });
-  } catch (err) {
-    console.error('Firestore saveInvoice error:', err);
-    throw err;
-  }
-
+  // 1. Always update localStorage cache first (guaranteed instant offline persistence)
   if (typeof window !== 'undefined') {
     try {
       const vendorId = invoice.vendorId || 'demo_vendor_uid';
@@ -315,6 +308,14 @@ export async function saveInvoice(invoice: Invoice): Promise<void> {
       console.warn('Local invoice save error:', e);
     }
   }
+
+  // 2. Persist to Firestore if authenticated & online
+  try {
+    const docRef = doc(db, 'invoices', invoice.id);
+    await setDoc(docRef, cleanData, { merge: true });
+  } catch (err) {
+    console.warn('Firestore saveInvoice warning (cached locally):', err);
+  }
 }
 
 export async function updateInvoiceInFirestore(
@@ -329,46 +330,40 @@ export async function updateInvoiceInFirestore(
     updatedAt: new Date().toISOString()
   });
 
-  try {
-    const docRef = doc(db, 'invoices', invoiceId);
-    await setDoc(docRef, cleanData, { merge: true });
-  } catch (err) {
-    console.error('Firestore updateInvoice error:', err);
-    throw err;
-  }
-
+  // 1. Always update localStorage cache first (guaranteed instant offline persistence)
   if (typeof window !== 'undefined') {
     try {
       const vId = vendorId || updates.vendorId || 'demo_vendor_uid';
       const keys = [`orderspot_invoices_${vId}`, 'orderspot_collect_invoices'];
       keys.forEach((key) => {
         const local = localStorage.getItem(key);
-        if (local) {
-          let list: Invoice[] = JSON.parse(local);
-          const idx = list.findIndex((i) => i.id === invoiceId);
-          if (idx >= 0) {
-            list[idx] = { ...list[idx], ...cleanData } as Invoice;
-            localStorage.setItem(key, JSON.stringify(list));
-          }
+        let list: Invoice[] = local ? JSON.parse(local) : [];
+        const idx = list.findIndex((i) => i.id === invoiceId);
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], ...cleanData } as Invoice;
+        } else {
+          list.unshift(cleanData as Invoice);
         }
+        localStorage.setItem(key, JSON.stringify(list));
       });
     } catch (e) {
       console.warn('Local invoice update error:', e);
     }
+  }
+
+  // 2. Sync to Firestore if authenticated & online
+  try {
+    const docRef = doc(db, 'invoices', invoiceId);
+    await setDoc(docRef, cleanData, { merge: true });
+  } catch (err) {
+    console.warn('Firestore updateInvoice warning (cached locally):', err);
   }
 }
 
 export async function deleteInvoiceFromFirestore(invoiceId: string, vendorId?: string): Promise<void> {
   if (!invoiceId) return;
 
-  try {
-    const docRef = doc(db, 'invoices', invoiceId);
-    await deleteDoc(docRef);
-  } catch (err) {
-    console.error('Firestore deleteDoc error:', err);
-    throw err;
-  }
-
+  // 1. Remove from local storage first
   if (typeof window !== 'undefined') {
     try {
       const vId = vendorId || 'demo_vendor_uid';
@@ -382,6 +377,14 @@ export async function deleteInvoiceFromFirestore(invoiceId: string, vendorId?: s
         }
       });
     } catch (e) {}
+  }
+
+  // 2. Delete from Firestore if authenticated & online
+  try {
+    const docRef = doc(db, 'invoices', invoiceId);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('Firestore deleteDoc warning (cached locally):', err);
   }
 }
 

@@ -17,13 +17,11 @@ export function EditInvoiceModal({
   invoice,
   onInvoiceUpdated
 }: EditInvoiceModalProps) {
-  if (!isOpen || !invoice) return null;
-
-  const [customerName, setCustomerName] = useState(invoice.customerName || '');
-  const [phone, setPhone] = useState(invoice.phone || '');
-  const [amount, setAmount] = useState<string>(invoice.amount?.toString() || '0');
-  const [dueDate, setDueDate] = useState(invoice.dueDate || '');
-  const [invoiceNo, setInvoiceNo] = useState(invoice.invoiceNo || '');
+  const [customerName, setCustomerName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [amount, setAmount] = useState<string>('0');
+  const [dueDate, setDueDate] = useState('');
+  const [invoiceNo, setInvoiceNo] = useState('');
   const [receivedToday, setReceivedToday] = useState<string>('');
   const [paymentNote, setPaymentNote] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
@@ -40,6 +38,8 @@ export function EditInvoiceModal({
     }
   }, [invoice]);
 
+  if (!isOpen || !invoice) return null;
+
   const currentAmountNum = parseFloat(amount) || 0;
   const partialPaidNum = parseFloat(receivedToday) || 0;
   const remainingBalance = Math.max(0, currentAmountNum - partialPaidNum);
@@ -52,7 +52,7 @@ export function EditInvoiceModal({
     e.preventDefault();
     setIsSaving(true);
 
-    const formattedPhone = sanitizeIndianPhone(phone);
+    const formattedPhone = sanitizeIndianPhone(phone) || phone.trim();
     const prevPaid = invoice.paidAmount || 0;
     const newPaidTotal = prevPaid + partialPaidNum;
 
@@ -89,12 +89,17 @@ export function EditInvoiceModal({
       paymentHistory: newPaymentHistory
     };
 
+    // 1. Optimistically update parent dashboard state immediately
+    onInvoiceUpdated(updatedInvoice);
+
+    // 2. Immediately close the modal
+    onClose();
+
+    // 3. Persist to Firestore & offline storage in background
     try {
       await updateInvoiceInFirestore(invoice.id, updatedInvoice, invoice.vendorId);
-      onInvoiceUpdated(updatedInvoice);
-      onClose();
     } catch (err) {
-      console.error('Failed to update invoice in Firestore:', err);
+      console.warn('Firestore update error (saved locally):', err);
     } finally {
       setIsSaving(false);
     }

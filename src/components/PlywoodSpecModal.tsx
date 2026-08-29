@@ -50,12 +50,21 @@ export function PlywoodSpecModal({
   currencySymbol,
   onAddToCart
 }: PlywoodSpecModalProps) {
+  const [quantity, setQuantity] = useState<number>(10);
+  const [customNotes, setCustomNotes] = useState<string>('');
+  const [requestSample, setRequestSample] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (product) {
+      setQuantity(product.moq || 10);
+      setCustomNotes('');
+      setRequestSample(false);
+    }
+  }, [product]);
+
   if (!isOpen || !product) return null;
 
   const moq = product.moq || 10;
-  const [quantity, setQuantity] = useState<number>(moq);
-  const [customNotes, setCustomNotes] = useState<string>('');
-  const [requestSample, setRequestSample] = useState<boolean>(false);
 
   // Calculate unit price based on tiered bulk pricing
   let activeUnitPrice = product.price;

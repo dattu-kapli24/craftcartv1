@@ -280,7 +280,7 @@ export function OrderSpotCollectDashboard({ onBackToStore }: OrderSpotCollectDas
     e.preventDefault();
     if (!editingInvoice) return;
 
-    const formattedPhone = sanitizePhone(editPhone);
+    const formattedPhone = sanitizePhone(editPhone) || editPhone.trim();
     const parsedAmount = parseFloat(editAmount) || editingInvoice.amount;
 
     const updatedInv: Invoice = {
@@ -292,11 +292,27 @@ export function OrderSpotCollectDashboard({ onBackToStore }: OrderSpotCollectDas
       dueDate: editDueDate || editingInvoice.dueDate
     };
 
-    setInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? updatedInv : inv));
-    await updateInvoiceInFirestore(editingInvoice.id, updatedInv, vendor.id);
+    // 1. Optimistic state & localStorage update
+    setInvoices(prev => {
+      const next = prev.map(inv => inv.id === editingInvoice.id ? updatedInv : inv);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('orderspot_collect_invoices', JSON.stringify(next));
+          localStorage.setItem(`orderspot_invoices_${vendor.id}`, JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
 
-    showToast(`Updated customer ${editCustomerName} & phone: ${formattedPhone}`);
     setEditingInvoice(null);
+    showToast(`✓ Updated ${updatedInv.customerName} (${formattedPhone})`);
+
+    // 2. Background Firestore update
+    try {
+      await updateInvoiceInFirestore(editingInvoice.id, updatedInv, vendor.id);
+    } catch (e) {
+      console.warn('Firestore update warning:', e);
+    }
   };
 
   const handleCreateNewInvoice = async (e: React.FormEvent) => {

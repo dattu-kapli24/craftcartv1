@@ -2208,8 +2208,20 @@ export default function OrderSpotCollectPage() {
         onClose={() => setEditingInvoice(null)}
         invoice={editingInvoice}
         onInvoiceUpdated={(updated) => {
-          setInvoices((prev) => prev.map((inv) => (inv.id === updated.id ? updated : inv)));
-          showToast(`Invoice #${updated.invoiceNo} successfully updated!`);
+          setInvoices((prev) => {
+            const next = prev.map((inv) => (inv.id === updated.id ? updated : inv));
+            if (typeof window !== 'undefined') {
+              const currentUid = user?.uid || (isDemoMode ? 'demo_vendor_uid' : vendor.id);
+              try {
+                localStorage.setItem(`orderspot_invoices_${currentUid}`, JSON.stringify(next));
+                localStorage.setItem('orderspot_collect_invoices', JSON.stringify(next));
+              } catch (e) {
+                console.warn('LocalStorage save error:', e);
+              }
+            }
+            return next;
+          });
+          showToast(`✓ Updated ${updated.customerName} (${updated.phone})`);
         }}
       />
 
