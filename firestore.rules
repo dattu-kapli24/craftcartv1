@@ -35,25 +35,6 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
-    // Stores catalog
-    match /stores/{storeId} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    // Products catalog
-    match /products/{productId} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    // Customer orders
-    match /orders/{orderId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isSignedIn();
-    }
-
     // Default fallback
     match /{document=**} {
       allow read, write: if isSignedIn();

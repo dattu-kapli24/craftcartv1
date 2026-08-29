@@ -66,18 +66,6 @@
     "/reminder_logs/{logId}": {
       "schema": "ReminderLog",
       "description": "Collection of communication logs."
-    },
-    "/stores/{storeId}": {
-      "schema": "object",
-      "description": "Public storefront profiles."
-    },
-    "/products/{productId}": {
-      "schema": "object",
-      "description": "Catalog products for storefronts."
-    },
-    "/orders/{orderId}": {
-      "schema": "object",
-      "description": "Customer orders and checkout records."
     }
   }
 }
