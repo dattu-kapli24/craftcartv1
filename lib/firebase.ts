@@ -9,6 +9,7 @@ import {
   where,
   getDocs,
   writeBatch,
+  runTransaction,
   serverTimestamp,
   setLogLevel,
   type Firestore
@@ -162,10 +163,10 @@ export function cleanFirestoreData<T extends Record<string, any>>(obj: T): Recor
 
 const DEFAULT_TEMPLATE = `Dear {{customer_name}},
 
-This is a gentle payment reminder from {{business_name}} regarding Invoice #{{invoice_no}} for ₹{{amount}}, which is due on {{due_date}}.
+Payment reminder from {{business_name}} regarding Invoice #{{invoice_no}} for ₹{{amount}}, due on {{due_date}}.
 
-Kindly complete the payment using this instant UPI link:
-{{upi_link}}
+Click here to view invoice, pay via UPI / Corporate Bank, and upload payment confirmation:
+{{presentment_link}}
 
 Thank you for your business!`;
 
@@ -177,6 +178,10 @@ export async function getVendorProfile(userId: string): Promise<Vendor> {
     payeeName: 'OrderSpot Wholesale & Distributors',
     phone: '+919876543210',
     paymentTerms: 'Net 15 Days',
+    bankAccountNumber: '50200084729103',
+    bankIfsc: 'HDFC0001234',
+    bankName: 'HDFC Bank Ltd',
+    bankBranch: 'Industrial Finance Branch, Bengaluru',
     whatsappTemplate: DEFAULT_TEMPLATE,
     whatsappTemplateName: 'order_spot_invoice_reminder'
   };
@@ -395,6 +400,313 @@ export async function logReminderToFirestore(log: ReminderLog, vendorId: string)
     await setDoc(docRef, cleanData, { merge: true });
   } catch (err) {
     console.error('Firestore logReminder failed:', err);
+  }
+}
+
+// ---------------- PROOF-OF-SETTLEMENT & INVOICE PRESENTMENT ----------------
+
+export async function getInvoiceById(invoiceId: string): Promise<{ invoice: Invoice | null; vendor: Vendor | null }> {
+  if (!invoiceId) return { invoice: null, vendor: null };
+
+  try {
+    const invRef = doc(db, 'invoices', invoiceId);
+    const invSnap = await getDoc(invRef);
+    if (invSnap.exists()) {
+      const invoiceData = { id: invSnap.id, ...invSnap.data() } as Invoice;
+      const vendorData = await getVendorProfile(invoiceData.vendorId);
+      return { invoice: invoiceData, vendor: vendorData };
+    }
+  } catch (err) {
+    console.warn('Could not fetch invoice from Firestore, checking localStorage:', err);
+  }
+
+  // Fallback to localStorage
+  if (typeof window !== 'undefined') {
+    const localKeys = ['orderspot_collect_invoices'];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('orderspot_invoices_')) {
+        localKeys.push(k);
+      }
+    }
+    for (const key of localKeys) {
+      const data = localStorage.getItem(key);
+      if (data) {
+        try {
+          const list: Invoice[] = JSON.parse(data);
+          const found = list.find((i) => i.id === invoiceId || i.invoiceNo === invoiceId);
+          if (found) {
+            const vendor = await getVendorProfile(found.vendorId);
+            return { invoice: found, vendor };
+          }
+        } catch (e) {}
+      }
+    }
+  }
+
+  return { invoice: null, vendor: null };
+}
+
+export interface SettlementProofSubmission {
+  invoiceId: string;
+  vendorId: string;
+  receiptUrl?: string; // Base64 data URL or uploaded URL
+  utrNumber?: string;
+  paymentMethod?: 'UPI' | 'NEFT_RTGS' | 'IMPS' | 'CASH' | 'CHEQUE' | 'OTHER';
+  payerNotes?: string;
+}
+
+export async function submitInvoicePaymentProof(
+  proof: SettlementProofSubmission
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const nowIso = new Date().toISOString();
+    const updates: Partial<Invoice> = {
+      status: 'PENDING_VERIFICATION',
+      proofSubmittedAt: nowIso,
+      receiptUrl: proof.receiptUrl || '',
+      utrNumber: proof.utrNumber?.trim() || '',
+      paymentMethod: proof.paymentMethod || 'UPI',
+      payerNotes: proof.payerNotes?.trim() || ''
+    };
+
+    // Update in Firestore and local storage caches
+    await updateInvoiceInFirestore(proof.invoiceId, updates, proof.vendorId);
+    return { success: true };
+  } catch (err: any) {
+    console.error('submitInvoicePaymentProof error:', err);
+    return { success: false, error: err?.message || 'Failed to submit proof' };
+  }
+}
+
+export interface SettlementAuditParams {
+  invoiceId: string;
+  vendorId: string;
+  confirmedAmount?: number;
+  verifiedByEmail?: string;
+  accountantNotes?: string;
+}
+
+export interface SettlementAuditResult {
+  success: boolean;
+  invoice?: Invoice;
+  newStatus?: InvoiceStatus;
+  remainingBalance?: number;
+  error?: string;
+}
+
+/**
+ * Executes an atomic Firestore transaction to audit and settle incoming payments.
+ * Directly recalculates outstanding balance and adjusts status to PAID, PARTIALLY_PAID, or OVERDUE.
+ */
+export async function processAccountantSettlementAudit(
+  params: SettlementAuditParams
+): Promise<SettlementAuditResult> {
+  const { invoiceId, vendorId, confirmedAmount, verifiedByEmail, accountantNotes } = params;
+  if (!invoiceId) return { success: false, error: 'Invalid invoice ID' };
+
+  try {
+    const invRef = doc(db, 'invoices', invoiceId);
+    let updatedInvoice: Invoice | null = null;
+    const nowIso = new Date().toISOString();
+
+    // 1. First fetch latest state from local cache or Firestore to determine balance
+    let baseDoc: Partial<Invoice> = {};
+    const local = await getInvoiceById(invoiceId);
+    if (local.invoice) {
+      baseDoc = local.invoice;
+    }
+
+    const currentDocOutstanding = Number(
+      baseDoc.outstandingAmount !== undefined ? baseDoc.outstandingAmount : (baseDoc.amount || 0)
+    );
+
+    // If accountant didn't specify an amount or specified <= 0, default to full current outstanding
+    const confirmedAmt = confirmedAmount !== undefined && !isNaN(confirmedAmount) && confirmedAmount >= 0
+      ? confirmedAmount
+      : currentDocOutstanding;
+
+    // 2. Perform atomic Firestore mutation via runTransaction
+    try {
+      await runTransaction(db, async (transaction) => {
+        const invSnap = await transaction.get(invRef);
+        let docData: Partial<Invoice> = invSnap.exists() ? (invSnap.data() as Partial<Invoice>) : baseDoc;
+
+        const prevOriginal = Number(docData.originalAmount || docData.amount || 0);
+        const prevOutstanding = Number(
+          docData.outstandingAmount !== undefined ? docData.outstandingAmount : (docData.amount || 0)
+        );
+        const prevPaid = Number(docData.paidAmount || 0);
+        const newPaidTotal = prevPaid + confirmedAmt;
+        const newOutstanding = Math.max(0, prevOutstanding - confirmedAmt);
+
+        // Determine extended status
+        let newStatus: InvoiceStatus = 'PAID';
+        const isPastDue = docData.dueDate ? new Date(docData.dueDate) < new Date() : false;
+
+        if (newOutstanding <= 0) {
+          newStatus = 'PAID';
+        } else {
+          // Partial payment threshold matched: retain OVERDUE or transition to PARTIALLY_PAID
+          newStatus = isPastDue ? 'OVERDUE' : 'PARTIALLY_PAID';
+        }
+
+        const paymentEntry = {
+          date: nowIso,
+          amount: confirmedAmt,
+          notes: accountantNotes?.trim() || `Audited & confirmed by ${verifiedByEmail || 'Counter Desk'}`
+        };
+
+        const paymentHistory = Array.isArray(docData.paymentHistory)
+          ? [...docData.paymentHistory, paymentEntry]
+          : [paymentEntry];
+
+        const updates: Partial<Invoice> = {
+          originalAmount: prevOriginal || (docData.amount || 0),
+          amount: newOutstanding > 0 ? newOutstanding : (docData.amount || 0),
+          outstandingAmount: newOutstanding,
+          paidAmount: newPaidTotal,
+          status: newStatus,
+          verifiedAt: nowIso,
+          verifiedBy: verifiedByEmail || 'Store Counter Desk',
+          paymentHistory: paymentHistory,
+          payerNotes: accountantNotes ? `Accountant Note: ${accountantNotes}` : docData.payerNotes
+        };
+
+        const merged: Invoice = {
+          id: invoiceId,
+          vendorId: vendorId || (docData.vendorId as string) || 'demo_vendor_uid',
+          invoiceNo: (docData.invoiceNo as string) || 'INV-001',
+          customerName: (docData.customerName as string) || 'Customer',
+          phone: (docData.phone as string) || '',
+          amount: newOutstanding > 0 ? newOutstanding : (docData.amount || 0),
+          originalAmount: prevOriginal || (docData.amount || 0),
+          outstandingAmount: newOutstanding,
+          paidAmount: newPaidTotal,
+          dueDate: (docData.dueDate as string) || nowIso.split('T')[0],
+          status: newStatus,
+          createdAt: (docData.createdAt as string) || nowIso,
+          reminderCount: docData.reminderCount || 0,
+          ...updates
+        };
+
+        const cleanData = cleanFirestoreData({
+          ...updates,
+          updatedAt: nowIso
+        });
+
+        transaction.set(invRef, cleanData, { merge: true });
+        updatedInvoice = merged;
+      });
+    } catch (txnError) {
+      console.warn('Firestore transaction fallback to direct update:', txnError);
+      
+      const prevOriginal = Number(baseDoc.originalAmount || baseDoc.amount || 0);
+      const prevOutstanding = Number(
+        baseDoc.outstandingAmount !== undefined ? baseDoc.outstandingAmount : (baseDoc.amount || 0)
+      );
+      const prevPaid = Number(baseDoc.paidAmount || 0);
+      const newPaidTotal = prevPaid + confirmedAmt;
+      const newOutstanding = Math.max(0, prevOutstanding - confirmedAmt);
+
+      const isPastDue = baseDoc.dueDate ? new Date(baseDoc.dueDate) < new Date() : false;
+      const newStatus: InvoiceStatus = newOutstanding <= 0 ? 'PAID' : (isPastDue ? 'OVERDUE' : 'PARTIALLY_PAID');
+
+      const paymentEntry = {
+        date: nowIso,
+        amount: confirmedAmt,
+        notes: accountantNotes?.trim() || `Audited & confirmed by ${verifiedByEmail || 'Counter Desk'}`
+      };
+
+      const paymentHistory = Array.isArray(baseDoc.paymentHistory)
+        ? [...baseDoc.paymentHistory, paymentEntry]
+        : [paymentEntry];
+
+      const updates: Partial<Invoice> = {
+        originalAmount: prevOriginal || (baseDoc.amount || 0),
+        amount: newOutstanding > 0 ? newOutstanding : (baseDoc.amount || 0),
+        outstandingAmount: newOutstanding,
+        paidAmount: newPaidTotal,
+        status: newStatus,
+        verifiedAt: nowIso,
+        verifiedBy: verifiedByEmail || 'Store Counter Desk',
+        paymentHistory: paymentHistory,
+        payerNotes: accountantNotes ? `Accountant Note: ${accountantNotes}` : baseDoc.payerNotes
+      };
+
+      await updateInvoiceInFirestore(invoiceId, updates, vendorId);
+      updatedInvoice = { ...(baseDoc as Invoice), ...updates };
+    }
+
+    // 3. Keep localStorage in sync
+    if (updatedInvoice && typeof window !== 'undefined') {
+      const vId = vendorId || updatedInvoice.vendorId || 'demo_vendor_uid';
+      const keys = [`orderspot_invoices_${vId}`, 'orderspot_collect_invoices'];
+      keys.forEach((key) => {
+        const localData = localStorage.getItem(key);
+        let list: Invoice[] = localData ? JSON.parse(localData) : [];
+        const idx = list.findIndex((i) => i.id === invoiceId);
+        if (idx >= 0) {
+          list[idx] = updatedInvoice!;
+        } else {
+          list.unshift(updatedInvoice!);
+        }
+        localStorage.setItem(key, JSON.stringify(list));
+      });
+    }
+
+    return {
+      success: true,
+      invoice: updatedInvoice || undefined,
+      newStatus: updatedInvoice?.status,
+      remainingBalance: updatedInvoice?.outstandingAmount
+    };
+  } catch (err: any) {
+    console.error('processAccountantSettlementAudit error:', err);
+    return { success: false, error: err?.message || 'Audit settlement update failed' };
+  }
+}
+
+export async function approveAndCloseInvoice(
+  invoiceId: string,
+  vendorId: string,
+  verifiedByEmail?: string,
+  confirmedAmount?: number,
+  accountantNotes?: string
+): Promise<SettlementAuditResult> {
+  return processAccountantSettlementAudit({
+    invoiceId,
+    vendorId,
+    confirmedAmount,
+    verifiedByEmail,
+    accountantNotes
+  });
+}
+
+export async function rejectInvoiceProof(
+  invoiceId: string,
+  vendorId: string,
+  reason?: string
+): Promise<{ success: boolean; invoice?: Invoice; error?: string }> {
+  try {
+    const nowIso = new Date().toISOString();
+    const local = await getInvoiceById(invoiceId);
+    const prevDoc = local.invoice;
+    const isPastDue = prevDoc?.dueDate ? new Date(prevDoc.dueDate) < new Date() : false;
+    
+    const updates: Partial<Invoice> = {
+      status: isPastDue ? 'OVERDUE' : (prevDoc?.status === 'PARTIALLY_PAID' ? 'PARTIALLY_PAID' : 'PENDING'),
+      notes: reason ? `Proof Rejected: ${reason}` : 'Proof rejected by store desk',
+      proofSubmittedAt: undefined
+    };
+
+    await updateInvoiceInFirestore(invoiceId, updates, vendorId);
+    const updatedInvoice = prevDoc ? ({ ...prevDoc, ...updates } as Invoice) : undefined;
+
+    return { success: true, invoice: updatedInvoice };
+  } catch (err: any) {
+    console.error('rejectInvoiceProof error:', err);
+    return { success: false, error: err?.message || 'Failed to reject proof' };
   }
 }
 

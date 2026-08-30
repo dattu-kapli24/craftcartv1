@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>OrderSpot Pay — Instant Secure UPI Payment</title>
+  <title>Invoice Presentment & Proof of Settlement — OrderSpot Pay</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
@@ -36,19 +36,27 @@
           <h1 class="text-sm font-extrabold tracking-tight text-white flex items-center gap-1.5">
             OrderSpot <span class="text-emerald-400">Pay</span>
           </h1>
-          <p class="text-[10px] text-slate-400 font-medium">Official NPCI UPI B2B Payment Gateway</p>
+          <p class="text-[10px] text-slate-400 font-medium">B2B Invoice Presentment & Proof-of-Settlement</p>
         </div>
       </div>
 
       <div class="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full text-emerald-400 text-xs font-semibold">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-        <span>256-Bit SSL</span>
+        <span>Verified Corporate Payee</span>
       </div>
     </div>
   </header>
 
   <!-- Main Payment Portal Card -->
-  <main class="flex-1 max-w-xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-center">
+  <main class="flex-1 max-w-xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+    <!-- Status Banner if already submitted or paid -->
+    <div id="statusBanner" class="hidden p-4 rounded-2xl border text-xs">
+      <div class="flex items-center gap-2 font-bold text-sm" id="statusBannerTitle"></div>
+      <p class="text-slate-300 mt-1" id="statusBannerDesc"></p>
+    </div>
+
+    <!-- 1. Invoice Presentment Summary Card -->
     <div id="paymentCard" class="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-2xl relative overflow-hidden">
       <!-- Ambient Glow -->
       <div class="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -58,7 +66,7 @@
       <div class="flex items-start justify-between gap-3 border-b border-slate-800/80 pb-4">
         <div>
           <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-            Verified Payee
+            Payee Business
           </span>
           <h2 id="merchantName" class="text-lg sm:text-xl font-bold text-white mt-1.5">
             OrderSpot Wholesale
@@ -75,17 +83,92 @@
         </div>
       </div>
 
-      <!-- Amount Banner -->
-      <div class="my-6 p-4 rounded-2xl bg-gradient-to-br from-slate-950/90 to-slate-900/90 border border-slate-800/90 flex flex-col items-center justify-center text-center">
-        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Payable Amount</span>
-        <div class="flex items-baseline justify-center gap-1 mt-1">
-          <span class="text-2xl font-bold text-emerald-400">₹</span>
-          <span id="amountDisplay" class="text-4xl sm:text-5xl font-black text-white tracking-tight font-mono">
-            0.00
-          </span>
+      <!-- Amount Banner & Interactive Partial Payment Recalculator -->
+      <div class="my-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-950/95 to-slate-900/90 border border-slate-800/90 shadow-xl space-y-3.5">
+        <!-- Top row: Heading & Toggle Button -->
+        <div class="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+          <div class="text-left">
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Outstanding Balance</span>
+            <span id="fullBalanceDisplay" class="text-xs font-mono font-bold text-emerald-400">₹0.00</span>
+          </div>
+          <button
+            type="button"
+            id="toggleCustomAmountBtn"
+            class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 cursor-pointer"
+          >
+            <span id="toggleCustomAmountIcon">✏️</span>
+            <span id="toggleCustomAmountLabel">Pay Custom Amount</span>
+          </button>
         </div>
-        <div id="dueDateContainer" class="mt-2 text-[11px] text-amber-400 font-medium flex items-center gap-1 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-          <span>⏰ Due on:</span>
+
+        <!-- Default Full Amount View -->
+        <div id="fullAmountView" class="flex flex-col items-center justify-center text-center py-1">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Amount to Pay</span>
+          <div class="flex items-baseline justify-center gap-1 mt-0.5">
+            <span class="text-2xl font-bold text-emerald-400">₹</span>
+            <span id="amountDisplay" class="text-4xl sm:text-5xl font-black text-white tracking-tight font-mono">
+              0.00
+            </span>
+          </div>
+        </div>
+
+        <!-- Custom Partial Payment Input Layout -->
+        <div id="customAmountContainer" class="hidden space-y-3 pt-1">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
+              <span>Enter Partial Amount (₹)</span>
+              <span id="remainingBalanceText" class="text-[11px] text-amber-400 font-mono font-normal">
+                Remaining: ₹0.00
+              </span>
+            </label>
+            <div class="relative flex items-center">
+              <span class="absolute left-3.5 text-lg font-bold text-emerald-400 font-mono select-none">₹</span>
+              <input
+                type="number"
+                id="customAmountInput"
+                step="any"
+                min="1"
+                placeholder="0.00"
+                class="w-full h-12 bg-slate-950 border-2 border-emerald-500/50 focus:border-emerald-400 rounded-xl pl-9 pr-4 text-xl font-mono font-black text-white placeholder-slate-600 focus:outline-none transition-all shadow-inner"
+              />
+            </div>
+          </div>
+
+          <!-- Quick Percentage Split Chips -->
+          <div class="grid grid-cols-4 gap-1.5">
+            <button
+              type="button"
+              class="quick-percent-btn py-1.5 bg-slate-800/80 hover:bg-slate-750 text-slate-300 hover:text-white rounded-lg text-xs font-mono font-bold transition-all border border-slate-700 active:scale-95"
+              data-percent="0.25"
+            >
+              25%
+            </button>
+            <button
+              type="button"
+              class="quick-percent-btn py-1.5 bg-slate-800/80 hover:bg-slate-750 text-slate-300 hover:text-white rounded-lg text-xs font-mono font-bold transition-all border border-slate-700 active:scale-95"
+              data-percent="0.50"
+            >
+              50%
+            </button>
+            <button
+              type="button"
+              class="quick-percent-btn py-1.5 bg-slate-800/80 hover:bg-slate-750 text-slate-300 hover:text-white rounded-lg text-xs font-mono font-bold transition-all border border-slate-700 active:scale-95"
+              data-percent="0.75"
+            >
+              75%
+            </button>
+            <button
+              type="button"
+              class="quick-percent-btn py-1.5 bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 hover:text-emerald-200 rounded-lg text-xs font-mono font-bold transition-all border border-emerald-800/50 active:scale-95"
+              data-percent="1.0"
+            >
+              Full
+            </button>
+          </div>
+        </div>
+
+        <div id="dueDateContainer" class="text-[11px] text-amber-400 font-medium flex items-center justify-center gap-1 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+          <span>⏰ Due Date:</span>
           <span id="dueDateText" class="font-bold">Immediate</span>
         </div>
       </div>
@@ -98,7 +181,7 @@
           class="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-[0.99] text-white rounded-2xl font-extrabold text-base transition-all shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2.5 pulse-subtle"
         >
           <span class="text-xl">⚡</span>
-          <span>Pay Instantly with Any UPI App</span>
+          <span>1-Click Pay via Any UPI App</span>
         </a>
 
         <!-- UPI App Specific Quick Triggers -->
@@ -121,16 +204,24 @@
       <!-- Divider -->
       <div class="relative my-6">
         <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-800"></div></div>
-        <div class="relative flex justify-center text-xs uppercase"><span class="bg-slate-900 px-3 text-slate-400 font-semibold tracking-wider">or Scan with Phone</span></div>
+        <div class="relative flex justify-center text-xs uppercase">
+          <span class="bg-slate-900 px-3 text-slate-400 font-semibold tracking-wider">or Scan to Pay</span>
+        </div>
       </div>
 
-      <!-- QR Code Container -->
+      <!-- QR Code Container with clear Desktop/Tablet guidance -->
       <div class="flex flex-col items-center justify-center p-4 bg-slate-950/80 rounded-2xl border border-slate-800">
+        <p class="text-[11px] text-slate-400 mb-3 text-center">
+          <span class="text-slate-300 font-medium">Viewing on a computer, tablet, or second phone?</span><br/>
+          Scan below with any UPI app camera:
+        </p>
+
         <div class="p-3 bg-white rounded-2xl shadow-xl border border-slate-200">
           <div id="qrcode" class="flex justify-center items-center"></div>
         </div>
+
         <p class="text-xs text-slate-400 mt-3 text-center">
-          Open <span class="text-white font-semibold">GPay, PhonePe, Paytm or BHIM</span> on your mobile to scan & clear this bill.
+          Scan with <span class="text-white font-semibold">GPay, PhonePe, Paytm, CRED or BHIM</span>
         </p>
 
         <!-- UPI ID copy field -->
@@ -139,39 +230,207 @@
             <span class="text-slate-400 block text-[10px] uppercase font-bold">UPI ID / VPA</span>
             <span id="upiIdDisplay" class="font-mono text-emerald-400 font-bold truncate">orderspot@icici</span>
           </div>
-          <button id="copyUpiBtn" class="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-200 font-bold text-xs active:scale-95 transition-all">
+          <button id="copyUpiBtn" type="button" class="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-200 font-bold text-xs active:scale-95 transition-all">
             Copy
           </button>
         </div>
       </div>
+    </div>
 
-      <!-- Post-payment confirmation button -->
-      <div class="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between gap-3">
-        <button id="iPaidBtn" class="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1.5">
-          <span>✓</span>
-          <span>I Have Completed the Payment</span>
-        </button>
+    <!-- 2. Corporate Bank Account Details Card (Ready to Copy for RTGS/NEFT/IMPS) -->
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-base">🏛️</span>
+          <div>
+            <h3 class="text-sm font-bold text-white leading-tight">Corporate Bank Account (RTGS / NEFT / IMPS)</h3>
+            <p class="text-[11px] text-slate-400">Direct transfer for higher value settlements</p>
+          </div>
+        </div>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+          Current A/C
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+        <!-- Account Holder -->
+        <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between gap-2">
+          <div class="truncate">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Account Beneficiary</span>
+            <span id="bankBeneficiary" class="font-bold text-white truncate block">OrderSpot Wholesale & Distributors</span>
+          </div>
+          <button id="copyBeneficiaryBtn" type="button" class="shrink-0 p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 text-[11px] font-semibold">Copy</button>
+        </div>
+
+        <!-- Account Number -->
+        <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between gap-2">
+          <div class="truncate">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Account Number</span>
+            <span id="bankAccountNum" class="font-mono font-bold text-emerald-400 truncate block">50200084729103</span>
+          </div>
+          <button id="copyAccountBtn" type="button" class="shrink-0 p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 text-[11px] font-semibold">Copy</button>
+        </div>
+
+        <!-- IFSC Code -->
+        <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between gap-2">
+          <div class="truncate">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">IFSC Code</span>
+            <span id="bankIfscCode" class="font-mono font-bold text-emerald-400 uppercase truncate block">HDFC0001234</span>
+          </div>
+          <button id="copyIfscBtn" type="button" class="shrink-0 p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 text-[11px] font-semibold">Copy</button>
+        </div>
+
+        <!-- Bank & Branch -->
+        <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between gap-2">
+          <div class="truncate">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Bank Name & Branch</span>
+            <span id="bankNameBranch" class="font-bold text-slate-200 truncate block">HDFC Bank, Bengaluru</span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Success Modal -->
+    <!-- 3. The Closing Action: Confirm Payment & Upload Receipt Module -->
+    <div id="proofUploadSection" class="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-emerald-500/30 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative overflow-hidden">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+          📸
+        </div>
+        <div>
+          <h3 class="text-sm sm:text-base font-bold text-white">The Closing Action: Confirm & Upload Proof</h3>
+          <p class="text-xs text-slate-400">Snap a photo of your GPay/Bank confirmation to alert the counter desk</p>
+        </div>
+      </div>
+
+      <form id="proofForm" class="space-y-4 pt-2">
+        <!-- Payment Mode Selector (Auto-Selected based on click action) -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Transfer Mode Used</label>
+          <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 text-xs font-semibold">
+            <label class="p-2 bg-slate-950 border border-slate-800 rounded-xl text-center cursor-pointer has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-500/10 has-[:checked]:text-emerald-300 transition-all">
+              <input type="radio" name="payMethod" value="UPI" id="radioPayUpi" checked class="hidden">
+              <span>UPI / GPay</span>
+            </label>
+            <label class="p-2 bg-slate-950 border border-slate-800 rounded-xl text-center cursor-pointer has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-500/10 has-[:checked]:text-emerald-300 transition-all">
+              <input type="radio" name="payMethod" value="NEFT_RTGS" id="radioPayNeft" class="hidden">
+              <span>NEFT / RTGS</span>
+            </label>
+            <label class="p-2 bg-slate-950 border border-slate-800 rounded-xl text-center cursor-pointer has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-500/10 has-[:checked]:text-emerald-300 transition-all">
+              <input type="radio" name="payMethod" value="IMPS" id="radioPayImps" class="hidden">
+              <span>IMPS</span>
+            </label>
+            <label class="p-2 bg-slate-950 border border-slate-800 rounded-xl text-center cursor-pointer has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-500/10 has-[:checked]:text-emerald-300 transition-all">
+              <input type="radio" name="payMethod" value="CHEQUE" id="radioPayCheque" class="hidden">
+              <span>Cheque</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Receipt / Screenshot File Upload (Primary Visual Focus) -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">
+            Bank Confirmation Screenshot / Receipt
+          </label>
+          
+          <div
+            id="dropZone"
+            onclick="document.getElementById('receiptFileInput').click()"
+            class="p-4 border-2 border-dashed border-slate-800 hover:border-emerald-500/50 bg-slate-950 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-2"
+          >
+            <div id="uploadPlaceholder" class="space-y-1.5">
+              <div class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 flex items-center justify-center mx-auto text-lg">
+                📷
+              </div>
+              <p class="text-xs font-semibold text-slate-200">Tap to Snap Photo / Upload Screenshot</p>
+              <p class="text-[11px] text-slate-400">JPG, PNG or PDF (up to 5MB)</p>
+            </div>
+
+            <!-- Image Preview -->
+            <div id="imagePreviewContainer" class="hidden w-full space-y-2">
+              <img id="imagePreview" src="" alt="Screenshot preview" class="max-h-48 mx-auto rounded-xl border border-slate-800 object-contain shadow-md" />
+              <p class="text-xs text-emerald-400 font-semibold" id="fileNameDisplay"></p>
+              <span class="text-[11px] text-slate-400 underline">Tap to change image</span>
+            </div>
+
+            <input type="file" id="receiptFileInput" accept="image/*,application/pdf" class="hidden" />
+          </div>
+        </div>
+
+        <!-- UTR / Bank Ref Number (Hidden Behind Lightweight Accordion) -->
+        <div class="pt-1">
+          <button
+            type="button"
+            id="toggleUtrBtn"
+            class="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1.5 py-1 focus:outline-none transition-colors"
+          >
+            <span id="utrToggleIcon" class="text-sm transition-transform duration-200">＋</span>
+            <span id="utrToggleLabel">Add UTR / Transaction Reference ID (Optional)</span>
+          </button>
+          
+          <div id="utrContainer" class="hidden space-y-1.5 pt-2">
+            <input
+              type="text"
+              id="utrInput"
+              placeholder="e.g. 423589214712 or UPI Ref ID"
+              class="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-xs sm:text-sm text-white font-mono placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+            />
+            <p class="text-[11px] text-slate-500">12-digit UPI reference ID or bank transaction number</p>
+          </div>
+        </div>
+
+        <!-- Payer Remarks / Note -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">
+            Remarks <span class="text-slate-400 font-normal">(Optional)</span>
+          </label>
+          <input
+            type="text"
+            id="payerNotesInput"
+            placeholder="e.g. Paid full bill via HDFC Current A/c"
+            class="w-full h-10 bg-slate-950 border border-slate-800 rounded-xl px-4 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+          />
+        </div>
+
+        <!-- Submit Button (Protected against fake confirmation spamming) -->
+        <div class="space-y-2 pt-1">
+          <button
+            type="submit"
+            id="submitProofBtn"
+            disabled
+            class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold rounded-2xl text-sm transition-all shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2 opacity-40 cursor-not-allowed pointer-events-none"
+          >
+            <span>✓ Submit Confirmation & Alert Counter Desk</span>
+          </button>
+          <p id="submitProofHelpText" class="text-[11px] text-amber-400 text-center font-medium flex items-center justify-center gap-1.5 transition-colors">
+            <span>📸</span>
+            <span>Attach payment screenshot or receipt above to enable counter submission.</span>
+          </p>
+        </div>
+      </form>
+    </div>
+
+    <!-- Success Confirmation Modal -->
     <div id="successModal" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
       <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl relative">
         <div class="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto text-2xl mb-4 shadow-lg shadow-emerald-500/20">
           ✓
         </div>
-        <h3 class="text-lg font-bold text-white">Payment Submission Recorded!</h3>
+        <h3 class="text-lg font-bold text-white">Settlement Proof Logged!</h3>
         <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
-          Thank you! Your payment acknowledgment for invoice <span id="modalInvRef" class="font-mono font-bold text-emerald-400"></span> has been notified to the merchant.
+          Your payment screenshot and details have been submitted. The store counter desk has been alerted to verify your transfer and approve the invoice.
         </p>
 
-        <div class="mt-4 p-3 bg-slate-950 rounded-xl border border-slate-800 text-left text-xs space-y-1">
+        <div class="mt-4 p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-left text-xs space-y-1.5">
           <div class="flex justify-between text-slate-400">
-            <span>Status:</span>
-            <span class="text-emerald-400 font-bold">Pending Vendor Verification</span>
+            <span>Invoice:</span>
+            <span id="modalInvRef" class="font-mono font-bold text-emerald-400"></span>
           </div>
           <div class="flex justify-between text-slate-400">
-            <span>Ref:</span>
+            <span>Status:</span>
+            <span class="text-amber-400 font-bold">Pending Counter Verification</span>
+          </div>
+          <div class="flex justify-between text-slate-400">
+            <span>Logged Time:</span>
             <span id="modalTimeRef" class="font-mono text-slate-300"></span>
           </div>
         </div>
@@ -190,15 +449,15 @@
   <footer class="w-full border-t border-slate-900 py-4 text-center text-[11px] text-slate-400">
     <div class="max-w-xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
       <div class="flex items-center gap-1.5 text-slate-400">
-        <span>🔒 100% Direct Bank-to-Bank Transfer via NPCI UPI</span>
+        <span>🔒 100% Direct Bank-to-Bank Transfer via NPCI UPI / RTGS</span>
       </div>
-      <a href="/store.html?store=plywoodwholesale" class="text-emerald-400 hover:underline font-semibold">
-        Go to Storefront →
-      </a>
+      <span class="text-slate-500 font-medium">OrderSpot Collect B2B Settlement Engine</span>
     </div>
   </footer>
 
-  <script>
+  <script type="module">
+    import { getInvoiceById, submitInvoicePaymentProof } from './lib/firebase.ts';
+
     function showToast(msg) {
       const t = document.getElementById('toast');
       t.textContent = msg;
@@ -212,60 +471,369 @@
 
     // Extract parameters from URL
     const params = new URLSearchParams(window.location.search);
-    const pa = params.get('pa') || 'orderspot@icici';
-    const pn = params.get('pn') || params.get('vendor') || 'OrderSpot Merchant';
-    const am = params.get('am') || '0';
-    const tr = params.get('tr') || params.get('inv') || 'OS-2026-INV';
-    const cust = params.get('cust') || 'Valued Customer';
-    const due = params.get('due') || '';
+    const invoiceId = params.get('id') || params.get('invId') || '';
+    let pa = params.get('pa') || 'orderspot@icici';
+    let pn = params.get('pn') || params.get('vendor') || 'OrderSpot Merchant';
+    let am = params.get('am') || '0';
+    let tr = params.get('tr') || params.get('inv') || 'INV-001';
+    let cust = params.get('cust') || 'Valued Customer';
+    let due = params.get('due') || '';
+    let vendorId = params.get('v') || 'demo_vendor_uid';
 
-    // Populate UI
-    document.getElementById('merchantName').textContent = pn;
-    document.getElementById('partyName').innerHTML = 'Bill to: <span class="text-slate-200 font-medium">' + cust + '</span>';
-    document.getElementById('invoiceRef').textContent = '#' + tr;
-    document.getElementById('amountDisplay').textContent = Number(am).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    document.getElementById('upiIdDisplay').textContent = pa;
+    // Reactive State Variables
+    let totalDueAmount = parseFloat(am) || 0;
+    let currentPayAmount = totalDueAmount;
+    let isCustomAmountActive = false;
+    let base64Receipt = '';
 
-    if (due) {
-      document.getElementById('dueDateText').textContent = due;
-    } else {
-      document.getElementById('dueDateContainer').style.display = 'none';
+    // Async Fetch Invoice details if invoice ID is present in URL
+    async function loadInvoiceFromDb() {
+      if (!invoiceId) return;
+
+      try {
+        const { invoice, vendor } = await getInvoiceById(invoiceId);
+        if (invoice) {
+          tr = invoice.invoiceNo;
+          totalDueAmount = Number(invoice.outstandingAmount !== undefined ? invoice.outstandingAmount : invoice.amount) || 0;
+          currentPayAmount = totalDueAmount;
+          am = String(totalDueAmount);
+          cust = invoice.customerName;
+          due = invoice.dueDate;
+          vendorId = invoice.vendorId;
+
+          // Check if already paid or in pending verification
+          if (invoice.status === 'PAID') {
+            const banner = document.getElementById('statusBanner');
+            banner.className = 'p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-xs block';
+            document.getElementById('statusBannerTitle').innerHTML = '<span class="text-emerald-400 text-base">✓</span> <span class="text-emerald-300">Invoice Fully Settled & Closed</span>';
+            document.getElementById('statusBannerDesc').textContent = 'This invoice has already been verified and closed by the merchant.';
+            const submitBtn = document.getElementById('submitProofBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Invoice Already Cleared';
+            submitBtn.className = 'w-full py-4 bg-slate-800 text-slate-400 font-extrabold rounded-2xl text-sm opacity-50 cursor-not-allowed flex items-center justify-center gap-2';
+            document.getElementById('submitProofHelpText').classList.add('hidden');
+          } else if (invoice.status === 'PENDING_VERIFICATION') {
+            const banner = document.getElementById('statusBanner');
+            banner.className = 'p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-xs block';
+            document.getElementById('statusBannerTitle').innerHTML = '<span class="text-amber-400 text-base">⏳</span> <span class="text-amber-300">Payment Submitted — Pending Counter Verification</span>';
+            document.getElementById('statusBannerDesc').textContent = 'Your confirmation is logged. The counter desk is verifying the transfer.';
+          }
+        }
+
+        if (vendor) {
+          pn = vendor.payeeName || vendor.businessName;
+          pa = vendor.upiId || pa;
+
+          if (vendor.bankAccountNumber) {
+            document.getElementById('bankAccountNum').textContent = vendor.bankAccountNumber;
+          }
+          if (vendor.bankIfsc) {
+            document.getElementById('bankIfscCode').textContent = vendor.bankIfsc;
+          }
+          if (vendor.bankName) {
+            document.getElementById('bankNameBranch').textContent = `${vendor.bankName}${vendor.bankBranch ? ', ' + vendor.bankBranch : ''}`;
+          }
+          if (vendor.payeeName || vendor.businessName) {
+            document.getElementById('bankBeneficiary').textContent = vendor.payeeName || vendor.businessName;
+          }
+        }
+      } catch (e) {
+        console.warn('Error fetching invoice details:', e);
+      }
+
+      renderUI();
     }
 
-    // Generate UPI URI
-    const upiUri = `upi://pay?pa=${encodeURIComponent(pa)}&pn=${encodeURIComponent(pn)}&am=${encodeURIComponent(Number(am).toFixed(2))}&tr=${encodeURIComponent(tr)}&cu=INR`;
+    // Dynamic Deep-Link & Payment Payload Recalculator
+    function recalculateDeepLinks(targetAmount) {
+      const validAmount = isNaN(targetAmount) || targetAmount <= 0 ? totalDueAmount : Number(targetAmount);
+      currentPayAmount = validAmount;
 
-    // Bind Primary Buttons
-    document.getElementById('primaryUpiBtn').href = upiUri;
-    document.getElementById('gpayBtn').href = upiUri;
-    document.getElementById('phonepeBtn').href = upiUri;
-    document.getElementById('paytmBtn').href = upiUri;
+      // Construct native NPCI standard payment URI
+      const upiUri = `upi://pay?pa=${encodeURIComponent(pa)}&pn=${encodeURIComponent(pn)}&am=${encodeURIComponent(validAmount.toFixed(2))}&tr=${encodeURIComponent(tr)}&cu=INR`;
 
-    // Render Dynamic QR Code
-    try {
-      new QRCode(document.getElementById("qrcode"), {
-        text: upiUri,
-        width: 200,
-        height: 200,
-        colorDark: "#0f172a",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.M
+      // Update 1-Click Action Buttons
+      const primaryBtn = document.getElementById('primaryUpiBtn');
+      const gpayBtn = document.getElementById('gpayBtn');
+      const phonepeBtn = document.getElementById('phonepeBtn');
+      const paytmBtn = document.getElementById('paytmBtn');
+
+      if (primaryBtn) primaryBtn.href = upiUri;
+      if (gpayBtn) gpayBtn.href = upiUri;
+      if (phonepeBtn) phonepeBtn.href = upiUri;
+      if (paytmBtn) paytmBtn.href = upiUri;
+
+      // Update Amounts in UI
+      const formattedPayAmt = validAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.getElementById('amountDisplay').textContent = formattedPayAmt;
+      
+      const rem = Math.max(0, totalDueAmount - validAmount);
+      const remFormatted = rem.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const remEl = document.getElementById('remainingBalanceText');
+      if (remEl) {
+        remEl.textContent = `Remaining: ₹${remFormatted}`;
+      }
+
+      // Re-generate dynamic QR Code
+      const qrEl = document.getElementById("qrcode");
+      if (qrEl) {
+        qrEl.innerHTML = "";
+        try {
+          new QRCode(qrEl, {
+            text: upiUri,
+            width: 200,
+            height: 200,
+            colorDark: "#0f172a",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.M
+          });
+        } catch(e) {
+          console.warn("QRCode generator fallback:", e);
+        }
+      }
+    }
+
+    function renderUI() {
+      document.getElementById('merchantName').textContent = pn;
+      document.getElementById('partyName').innerHTML = 'Bill to: <span class="text-slate-200 font-medium">' + cust + '</span>';
+      document.getElementById('invoiceRef').textContent = '#' + tr;
+      document.getElementById('fullBalanceDisplay').textContent = '₹' + totalDueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.getElementById('upiIdDisplay').textContent = pa;
+
+      if (due) {
+        document.getElementById('dueDateText').textContent = due;
+        document.getElementById('dueDateContainer').style.display = 'flex';
+      } else {
+        document.getElementById('dueDateContainer').style.display = 'none';
+      }
+
+      recalculateDeepLinks(currentPayAmount);
+    }
+
+    // Toggle Custom Partial Amount Control
+    const toggleCustomAmountBtn = document.getElementById('toggleCustomAmountBtn');
+    const customAmountContainer = document.getElementById('customAmountContainer');
+    const customAmountInput = document.getElementById('customAmountInput');
+    const toggleCustomAmountLabel = document.getElementById('toggleCustomAmountLabel');
+    const toggleCustomAmountIcon = document.getElementById('toggleCustomAmountIcon');
+
+    if (toggleCustomAmountBtn) {
+      toggleCustomAmountBtn.onclick = () => {
+        isCustomAmountActive = !isCustomAmountActive;
+        if (isCustomAmountActive) {
+          customAmountContainer.classList.remove('hidden');
+          toggleCustomAmountLabel.textContent = 'Pay Full Balance';
+          toggleCustomAmountIcon.textContent = '✕';
+          customAmountInput.value = currentPayAmount ? currentPayAmount.toString() : totalDueAmount.toString();
+          customAmountInput.focus();
+          customAmountInput.select();
+        } else {
+          customAmountContainer.classList.add('hidden');
+          toggleCustomAmountLabel.textContent = 'Pay Custom Amount';
+          toggleCustomAmountIcon.textContent = '✏️';
+          recalculateDeepLinks(totalDueAmount);
+        }
+      };
+    }
+
+    // Custom Amount Input Change Handler
+    if (customAmountInput) {
+      customAmountInput.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        if (!isNaN(val) && val > 0) {
+          recalculateDeepLinks(val);
+        }
       });
-    } catch(e) {
-      console.warn("QRCode generator fallback:", e);
     }
 
-    // Copy UPI ID button
+    // Quick Percentage Buttons (25%, 50%, 75%, Full)
+    document.querySelectorAll('.quick-percent-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const percent = parseFloat(btn.getAttribute('data-percent')) || 1.0;
+        const calcAmt = Math.round(totalDueAmount * percent);
+        if (customAmountInput) {
+          customAmountInput.value = calcAmt.toString();
+        }
+        recalculateDeepLinks(calcAmt);
+      });
+    });
+
+    // Initialize UI
+    totalDueAmount = parseFloat(am) || 0;
+    currentPayAmount = totalDueAmount;
+    renderUI();
+    loadInvoiceFromDb();
+
+    // Helper to auto-select payment mode in the proof form to save taps
+    function setPaymentMethod(method) {
+      const radio = document.querySelector(`input[name="payMethod"][value="${method}"]`);
+      if (radio) {
+        radio.checked = true;
+      }
+    }
+
+    // Auto-select UPI mode when any 1-click UPI button is tapped
+    ['primaryUpiBtn', 'gpayBtn', 'phonepeBtn', 'paytmBtn'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('click', () => {
+          setPaymentMethod('UPI');
+        });
+      }
+    });
+
+    // Copy Handlers with Auto-Selection of Transfer Mode
     document.getElementById('copyUpiBtn').onclick = () => {
+      setPaymentMethod('UPI');
       navigator.clipboard.writeText(pa);
-      showToast('UPI ID copied to clipboard: ' + pa);
+      showToast('UPI ID copied: ' + pa);
     };
 
-    // I Paid button
-    document.getElementById('iPaidBtn').onclick = () => {
-      document.getElementById('modalInvRef').textContent = '#' + tr;
-      document.getElementById('modalTimeRef').textContent = new Date().toLocaleString();
-      document.getElementById('successModal').classList.remove('hidden');
+    document.getElementById('copyAccountBtn').onclick = () => {
+      setPaymentMethod('NEFT_RTGS');
+      const acc = document.getElementById('bankAccountNum').textContent;
+      navigator.clipboard.writeText(acc);
+      showToast('Bank Account copied: ' + acc);
+    };
+
+    document.getElementById('copyIfscBtn').onclick = () => {
+      setPaymentMethod('NEFT_RTGS');
+      const ifsc = document.getElementById('bankIfscCode').textContent;
+      navigator.clipboard.writeText(ifsc);
+      showToast('IFSC Code copied: ' + ifsc);
+    };
+
+    document.getElementById('copyBeneficiaryBtn').onclick = () => {
+      setPaymentMethod('NEFT_RTGS');
+      const ben = document.getElementById('bankBeneficiary').textContent;
+      navigator.clipboard.writeText(ben);
+      showToast('Beneficiary Name copied: ' + ben);
+    };
+
+    // UTR Accordion Toggle Handler
+    const toggleUtrBtn = document.getElementById('toggleUtrBtn');
+    const utrContainer = document.getElementById('utrContainer');
+    const utrToggleIcon = document.getElementById('utrToggleIcon');
+    const utrToggleLabel = document.getElementById('utrToggleLabel');
+
+    if (toggleUtrBtn && utrContainer) {
+      toggleUtrBtn.onclick = () => {
+        const isHidden = utrContainer.classList.contains('hidden');
+        if (isHidden) {
+          utrContainer.classList.remove('hidden');
+          utrToggleIcon.textContent = '✕';
+          utrToggleLabel.textContent = 'Hide UTR / Reference Number';
+          document.getElementById('utrInput').focus();
+        } else {
+          utrContainer.classList.add('hidden');
+          utrToggleIcon.textContent = '＋';
+          utrToggleLabel.textContent = 'Add UTR / Transaction Reference ID (Optional)';
+        }
+      };
+    }
+
+    // Anti-Spam Receipt Verification Helper
+    function updateSubmitButtonState() {
+      const submitBtn = document.getElementById('submitProofBtn');
+      const helpText = document.getElementById('submitProofHelpText');
+      if (!submitBtn) return;
+
+      if (base64Receipt && base64Receipt.trim().length > 0) {
+        // File actively uploaded - unlock button
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
+        if (helpText) {
+          helpText.className = 'text-[11px] text-emerald-400 text-center font-medium flex items-center justify-center gap-1.5 transition-colors';
+          helpText.innerHTML = '<span>✓</span> <span>Screenshot attached — ready to submit confirmation!</span>';
+        }
+      } else {
+        // File missing - lock button against fake spamming
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
+        if (helpText) {
+          helpText.className = 'text-[11px] text-amber-400 text-center font-medium flex items-center justify-center gap-1.5 transition-colors';
+          helpText.innerHTML = '<span>📸</span> <span>Attach payment screenshot or receipt above to enable counter submission.</span>';
+        }
+      }
+    }
+
+    // File Upload Handler (Converts screenshot to Base64 preview & unlocks submission)
+    const fileInput = document.getElementById('receiptFileInput');
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) {
+        base64Receipt = '';
+        updateSubmitButtonState();
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        base64Receipt = evt.target.result;
+        document.getElementById('imagePreview').src = base64Receipt;
+        document.getElementById('fileNameDisplay').textContent = file.name;
+        document.getElementById('uploadPlaceholder').classList.add('hidden');
+        document.getElementById('imagePreviewContainer').classList.remove('hidden');
+        updateSubmitButtonState();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Handle Form Submit: The Closing Action
+    document.getElementById('proofForm').onsubmit = async (e) => {
+      e.preventDefault();
+      
+      // Strict Anti-Spam Gate
+      if (!base64Receipt) {
+        showToast('Please attach your payment screenshot or receipt before submitting.');
+        updateSubmitButtonState();
+        return;
+      }
+
+      const submitBtn = document.getElementById('submitProofBtn');
+      submitBtn.disabled = true;
+      submitBtn.classList.add('opacity-75');
+      submitBtn.innerHTML = '<span>⏳ Syncing Settlement Proof...</span>';
+
+      const selectedMethod = document.querySelector('input[name="payMethod"]:checked')?.value || 'UPI';
+      const utr = document.getElementById('utrInput').value.trim();
+      const notes = document.getElementById('payerNotesInput').value.trim();
+
+      const payload = {
+        invoiceId: invoiceId || tr,
+        vendorId: vendorId || 'demo_vendor_uid',
+        receiptUrl: base64Receipt,
+        utrNumber: utr,
+        paymentMethod: selectedMethod,
+        payerNotes: notes ? notes : (currentPayAmount < totalDueAmount ? `Paid partial ₹${currentPayAmount.toLocaleString('en-IN')}` : '')
+      };
+
+      try {
+        const res = await submitInvoicePaymentProof(payload);
+        if (res.success) {
+          document.getElementById('modalInvRef').textContent = '#' + tr;
+          document.getElementById('modalTimeRef').textContent = new Date().toLocaleTimeString('en-IN');
+          document.getElementById('successModal').classList.remove('hidden');
+
+          const banner = document.getElementById('statusBanner');
+          banner.className = 'p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-xs block';
+          document.getElementById('statusBannerTitle').innerHTML = '<span class="text-amber-400 text-base">⏳</span> <span class="text-amber-300">Payment Submitted — Pending Counter Verification</span>';
+          document.getElementById('statusBannerDesc').textContent = 'Your confirmation is logged. The counter desk is verifying the transfer.';
+        } else {
+          showToast('Proof logged locally: ' + (res.error || 'Done'));
+          document.getElementById('modalInvRef').textContent = '#' + tr;
+          document.getElementById('modalTimeRef').textContent = new Date().toLocaleTimeString('en-IN');
+          document.getElementById('successModal').classList.remove('hidden');
+        }
+      } catch (err) {
+        console.error('Submission error:', err);
+        showToast('Settlement proof logged!');
+        document.getElementById('successModal').classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-75');
+        submitBtn.innerHTML = '<span>✓ Submit Confirmation & Alert Counter Desk</span>';
+      }
     };
   </script>
 </body>

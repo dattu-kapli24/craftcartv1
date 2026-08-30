@@ -22,9 +22,13 @@ export function VendorSettingsModal({
   const [upiId, setUpiId] = useState(vendor.upiId || '');
   const [payeeName, setPayeeName] = useState(vendor.payeeName || '');
   const [paymentTerms, setPaymentTerms] = useState(vendor.paymentTerms || '15');
+  const [bankAccountNumber, setBankAccountNumber] = useState(vendor.bankAccountNumber || '');
+  const [bankIfsc, setBankIfsc] = useState(vendor.bankIfsc || '');
+  const [bankName, setBankName] = useState(vendor.bankName || '');
+  const [bankBranch, setBankBranch] = useState(vendor.bankBranch || '');
   const [whatsappTemplate, setWhatsappTemplate] = useState(
     vendor.whatsappTemplate ||
-      `Dear {{customer_name}},\n\nThis is a gentle payment reminder from {{business_name}} regarding Invoice #{{invoice_no}} for ₹{{amount}}, due on {{due_date}}.\n\nKindly clear the dues via this instant UPI payment link:\n{{upi_link}}\n\nThank you for your business!`
+      `Dear {{customer_name}},\n\nPayment reminder from {{business_name}} regarding Invoice #{{invoice_no}} for ₹{{amount}}, due on {{due_date}}.\n\nClick here to view invoice, pay via UPI / Corporate Bank, and upload payment proof:\n{{presentment_link}}\n\nThank you for your business!`
   );
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -36,6 +40,10 @@ export function VendorSettingsModal({
       setUpiId(vendor.upiId || '');
       setPayeeName(vendor.payeeName || '');
       setPaymentTerms(vendor.paymentTerms || '15');
+      setBankAccountNumber(vendor.bankAccountNumber || '');
+      setBankIfsc(vendor.bankIfsc || '');
+      setBankName(vendor.bankName || '');
+      setBankBranch(vendor.bankBranch || '');
       if (vendor.whatsappTemplate) {
         setWhatsappTemplate(vendor.whatsappTemplate);
       }
@@ -61,6 +69,10 @@ export function VendorSettingsModal({
       upiId: upiId.trim() || 'orderspot@icici',
       payeeName: payeeName.trim() || businessName.trim(),
       paymentTerms: paymentTerms.trim(),
+      bankAccountNumber: bankAccountNumber.trim(),
+      bankIfsc: bankIfsc.trim().toUpperCase(),
+      bankName: bankName.trim(),
+      bankBranch: bankBranch.trim(),
       whatsappTemplate
     };
 
@@ -87,7 +99,8 @@ export function VendorSettingsModal({
     .replace(/\{\{invoice_no\}\}/g, 'OS-2026-891')
     .replace(/\{\{amount\}\}/g, '48,500')
     .replace(/\{\{due_date\}\}/g, '10-Aug-2026')
-    .replace(/\{\{upi_link\}\}/g, `upi://pay?pa=${upiId || 'orderspot@icici'}&pn=${encodeURIComponent(payeeName || businessName || 'OrderSpot')}&am=48500.00&tr=INV-891&cu=INR`);
+    .replace(/\{\{presentment_link\}\}/g, `${typeof window !== 'undefined' ? window.location.origin : ''}/pay.html?id=1&tr=OS-2026-891&am=48500.00&cust=Shree%20Balaji%20Traders`)
+    .replace(/\{\{upi_link\}\}/g, `${typeof window !== 'undefined' ? window.location.origin : ''}/pay.html?id=1&tr=OS-2026-891&am=48500.00&cust=Shree%20Balaji%20Traders`);
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-slate-950/80 backdrop-blur-sm flex justify-end transition-opacity">
@@ -173,7 +186,7 @@ export function VendorSettingsModal({
                   placeholder="merchant@icici / store@okaxis"
                   className="w-full h-11 sm:h-10 bg-slate-950 border border-emerald-800/50 rounded-xl px-4 text-base sm:text-sm text-emerald-300 font-mono focus:outline-none focus:border-emerald-500 transition-colors"
                 />
-                <p className="text-[11px] text-slate-400 mt-1">Direct bank settlements go here.</p>
+                <p className="text-[11px] text-slate-400 mt-1">Direct instant UPI settlements.</p>
               </div>
 
               <div>
@@ -188,6 +201,63 @@ export function VendorSettingsModal({
                     className="w-full h-11 sm:h-10 bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 text-base sm:text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
                   />
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2B: Corporate Bank Account (For NEFT/RTGS/IMPS Presentment) */}
+          <div className="space-y-3.5 sm:space-y-4 pt-4 border-t border-slate-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400">
+                <Building2 className="w-4 h-4" />
+                <span>Corporate Bank Account (NEFT/RTGS/IMPS)</span>
+              </div>
+              <span className="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700">Presentment Screen</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Bank Account Number</label>
+                <input
+                  type="text"
+                  value={bankAccountNumber}
+                  onChange={(e) => setBankAccountNumber(e.target.value)}
+                  placeholder="e.g. 50200084729103"
+                  className="w-full h-11 sm:h-10 bg-slate-950 border border-slate-800 rounded-xl px-4 text-base sm:text-sm text-white font-mono focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">IFSC Code</label>
+                <input
+                  type="text"
+                  value={bankIfsc}
+                  onChange={(e) => setBankIfsc(e.target.value.toUpperCase())}
+                  placeholder="e.g. HDFC0001234"
+                  className="w-full h-11 sm:h-10 bg-slate-950 border border-slate-800 rounded-xl px-4 text-base sm:text-sm text-emerald-400 font-mono uppercase focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Bank Name</label>
+                <input
+                  type="text"
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  placeholder="e.g. HDFC Bank / ICICI Bank"
+                  className="w-full h-11 sm:h-10 bg-slate-950 border border-slate-800 rounded-xl px-4 text-base sm:text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Branch Location</label>
+                <input
+                  type="text"
+                  value={bankBranch}
+                  onChange={(e) => setBankBranch(e.target.value)}
+                  placeholder="e.g. Main Market Branch"
+                  className="w-full h-11 sm:h-10 bg-slate-950 border border-slate-800 rounded-xl px-4 text-base sm:text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                />
               </div>
             </div>
           </div>
@@ -210,7 +280,7 @@ export function VendorSettingsModal({
                 { tag: 'invoice_no', label: '+ Invoice #' },
                 { tag: 'amount', label: '+ Amount' },
                 { tag: 'due_date', label: '+ Due Date' },
-                { tag: 'upi_link', label: '+ UPI Link' }
+                { tag: 'presentment_link', label: '+ Pay & Proof Link' }
               ].map((item) => (
                 <button
                   key={item.tag}

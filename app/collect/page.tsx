@@ -60,12 +60,15 @@ import {
   updateInvoiceInFirestore,
   deleteInvoiceFromFirestore,
   logReminderToFirestore,
+  approveAndCloseInvoice,
+  rejectInvoiceProof,
   auth
 } from '../../lib/firebase';
 import { parseTallyExcelFile, batchWriteInvoicesToFirestore, sanitizeIndianPhone, extractSpreadsheetHeadersAndRows, RawSpreadsheetData } from '../../utils/excelParser';
 import { VendorSettingsModal } from '../../components/VendorSettingsModal';
 import { EditInvoiceModal } from '../../components/EditInvoiceModal';
 import { ColumnMappingModal } from '../../components/ColumnMappingModal';
+import { ProofVerificationModal } from '../../components/ProofVerificationModal';
 
 export default function OrderSpotCollectPage() {
   const [user, setUser] = useState<any>(null);
@@ -93,7 +96,7 @@ export default function OrderSpotCollectPage() {
   const [regPayeeName, setRegPayeeName] = useState('');
   const [regPaymentTerms, setRegPaymentTerms] = useState('Net 15 Days');
   const [regWhatsappTemplate, setRegWhatsappTemplate] = useState(
-    `Dear {{customer_name}},\n\nThis is a gentle payment reminder from {{business_name}} regarding Invoice #{{invoice_no}} for ₹{{amount}}, which is due on {{due_date}}.\n\nKindly complete the payment using this instant UPI link:\n{{upi_link}}\n\nThank you for your business!`
+    `Dear {{customer_name}},\n\nPayment reminder from {{business_name}} regarding Invoice #{{invoice_no}} for ₹{{amount}}, due on {{due_date}}.\n\nClick here to view invoice, pay via UPI / Corporate Bank, and upload payment confirmation:\n{{presentment_link}}\n\nThank you for your business!`
   );
   const [regStep, setRegStep] = useState<1 | 2>(1);
 
@@ -126,6 +129,8 @@ export default function OrderSpotCollectPage() {
   const [qrModalInvoice, setQrModalInvoice] = useState<Invoice | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [isAddInvoiceOpen, setIsAddInvoiceOpen] = useState(false);
+  const [verificationInvoice, setVerificationInvoice] = useState<Invoice | null>(null);
+  const [isVerifyingProof, setIsVerifyingProof] = useState(false);
 
   // Close Manage Ledger dropdown when clicking outside
   useEffect(() => {
@@ -502,12 +507,16 @@ export default function OrderSpotCollectPage() {
   // Dynamic KPI Metric Calculations
   const metrics = useMemo(() => {
     const outstanding = invoices
-      .filter((inv) => inv.status === 'PENDING' || inv.status === 'OVERDUE')
+      .filter((inv) => inv.status === 'PENDING' || inv.status === 'OVERDUE' || inv.status === 'PENDING_VERIFICATION')
       .reduce((sum, inv) => sum + inv.amount, 0);
 
     const overdue = invoices.filter((inv) => inv.status === 'OVERDUE');
     const overdueCount = overdue.length;
     const overdueAmount = overdue.reduce((sum, inv) => sum + inv.amount, 0);
+
+    const pendingVerification = invoices.filter((inv) => inv.status === 'PENDING_VERIFICATION');
+    const pendingVerificationCount = pendingVerification.length;
+    const pendingVerificationAmount = pendingVerification.reduce((sum, inv) => sum + inv.amount, 0);
 
     const recovered = invoices
       .filter((inv) => inv.status === 'PAID')
@@ -519,6 +528,8 @@ export default function OrderSpotCollectPage() {
       outstanding,
       overdueCount,
       overdueAmount,
+      pendingVerificationCount,
+      pendingVerificationAmount,
       recovered,
       totalRemindersSent
     };
@@ -615,13 +626,37 @@ export default function OrderSpotCollectPage() {
     return `upi://pay?pa=${pa}&pn=${pn}&am=${am}&tr=${tr}&cu=INR`;
   };
 
+  // Construct Mobile-Optimized Invoice Presentment & Settlement URL
+  const buildPresentmentUrl = (inv: Invoice): string => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const pa = encodeURIComponent(vendor.upiId.trim());
+    const pn = encodeURIComponent(vendor.payeeName || vendor.businessName);
+    const am = inv.amount.toFixed(2);
+    const tr = encodeURIComponent(inv.invoiceNo);
+    const cust = encodeURIComponent(inv.customerName);
+    const due = encodeURIComponent(inv.dueDate);
+    const invId = encodeURIComponent(inv.id);
+    const vId = encodeURIComponent(inv.vendorId || user?.uid || vendor.id);
+    return `${origin}/pay.html?id=${invId}&tr=${tr}&am=${am}&pa=${pa}&pn=${pn}&cust=${cust}&due=${due}&v=${vId}`;
+  };
+
   // 1-Click WhatsApp Reminder Dispatch
   const handleSendWhatsAppReminder = async (invoice: Invoice) => {
     const upiLink = buildUpiUrl(invoice);
+    const presentmentLink = buildPresentmentUrl(invoice);
 
-    let messageBody = vendor.whatsappTemplate || '';
-    if (!messageBody.trim()) {
-      messageBody = `Dear {{customer_name}},\n\nPayment reminder from {{business_name}} for Invoice #{{invoice_no}} of ₹{{amount}} (Due: {{due_date}}).\n\nPay instantly via UPI:\n{{upi_link}}\n\nThank you!`;
+    // Ensure message body contains ONLY ONE single URL: the presentment link (works seamlessly on mobile & desktop)
+    let messageBody = (vendor.whatsappTemplate || '').trim();
+    if (!messageBody) {
+      messageBody = `Dear {{customer_name}},\n\nPayment reminder from {{business_name}} regarding Invoice #{{invoice_no}} for ₹{{amount}}, due on {{due_date}}.\n\nClick here to view invoice, pay via UPI / Corporate Bank, and upload payment confirmation:\n{{presentment_link}}\n\nThank you for your business!`;
+    }
+
+    // Replace any legacy {{upi_link}} with {{presentment_link}} so there is never two URLs
+    messageBody = messageBody.replace(/\{\{upi_link\}\}/g, '{{presentment_link}}');
+
+    // If template somehow doesn't have {{presentment_link}}, append it cleanly once
+    if (!messageBody.includes('{{presentment_link}}')) {
+      messageBody += `\n\nClick here to view invoice & pay:\n{{presentment_link}}`;
     }
 
     messageBody = messageBody
@@ -630,7 +665,7 @@ export default function OrderSpotCollectPage() {
       .replace(/\{\{invoice_no\}\}/g, invoice.invoiceNo)
       .replace(/\{\{amount\}\}/g, invoice.amount.toLocaleString('en-IN'))
       .replace(/\{\{due_date\}\}/g, invoice.dueDate)
-      .replace(/\{\{upi_link\}\}/g, upiLink);
+      .replace(/\{\{presentment_link\}\}/g, presentmentLink);
 
     const cleanPhone = sanitizeIndianPhone(invoice.phone).replace(/\+/g, '');
     const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageBody)}`;
@@ -716,6 +751,106 @@ export default function OrderSpotCollectPage() {
       setSelectedInvoiceIds([]);
     } else {
       setSelectedInvoiceIds(unpaidFiltered);
+    }
+  };
+
+  // Counter Desk: Approve & Settle Invoice from Proof of Settlement
+  const handleApproveSettlementProof = async (
+    invoiceId: string,
+    confirmedAmount?: number,
+    notes?: string
+  ) => {
+    setIsVerifyingProof(true);
+    try {
+      const target = invoices.find((inv) => inv.id === invoiceId);
+      const vId = target?.vendorId || user?.uid || vendor.id;
+      const res = await approveAndCloseInvoice(
+        invoiceId,
+        vId,
+        user?.email || vendor.businessName,
+        confirmedAmount,
+        notes
+      );
+      if (res.success && res.invoice) {
+        setInvoices((prev) => prev.map((inv) => (inv.id === invoiceId ? res.invoice! : inv)));
+        if (res.newStatus === 'PAID') {
+          showToast(`✓ Invoice #${res.invoice.invoiceNo} verified, audited & marked as PAID!`);
+        } else {
+          showToast(
+            `✓ Partial payment of ₹${Number(confirmedAmount).toLocaleString(
+              'en-IN'
+            )} audited. Balance: ₹${(res.remainingBalance || 0).toLocaleString('en-IN')}`
+          );
+        }
+      } else {
+        // Fallback local update
+        const currentOutstanding =
+          target?.outstandingAmount !== undefined ? target.outstandingAmount : (target?.amount || 0);
+        const auditAmt =
+          confirmedAmount !== undefined && confirmedAmount > 0 ? confirmedAmount : currentOutstanding;
+        const newOutstanding = Math.max(0, currentOutstanding - auditAmt);
+        const newStatus: InvoiceStatus =
+          newOutstanding <= 0
+            ? 'PAID'
+            : target?.dueDate && new Date(target.dueDate) < new Date()
+            ? 'OVERDUE'
+            : 'PARTIALLY_PAID';
+
+        const updated: Invoice = {
+          ...target!,
+          outstandingAmount: newOutstanding,
+          amount: newOutstanding > 0 ? newOutstanding : target!.amount,
+          paidAmount: (target!.paidAmount || 0) + auditAmt,
+          status: newStatus,
+          verifiedAt: new Date().toISOString(),
+          verifiedBy: user?.email || vendor.businessName,
+          payerNotes: notes ? `Accountant Note: ${notes}` : target!.payerNotes
+        };
+        setInvoices((prev) => prev.map((inv) => (inv.id === invoiceId ? updated : inv)));
+        if (newStatus === 'PAID') {
+          showToast(`✓ Invoice #${updated.invoiceNo} approved and marked as PAID!`);
+        } else {
+          showToast(
+            `✓ Partial payment of ₹${auditAmt.toLocaleString(
+              'en-IN'
+            )} recorded. Remaining Balance: ₹${newOutstanding.toLocaleString('en-IN')}`
+          );
+        }
+      }
+    } catch (e: any) {
+      console.error('Approve settlement error:', e);
+      showToast(`Error approving invoice: ${e.message}`);
+    } finally {
+      setIsVerifyingProof(false);
+      setVerificationInvoice(null);
+    }
+  };
+
+  // Counter Desk: Reject Settlement Proof
+  const handleRejectSettlementProof = async (invoiceId: string, reason: string) => {
+    setIsVerifyingProof(true);
+    try {
+      const target = invoices.find((inv) => inv.id === invoiceId);
+      const vId = target?.vendorId || user?.uid || vendor.id;
+      const res = await rejectInvoiceProof(invoiceId, vId, reason);
+      if (res.success && res.invoice) {
+        setInvoices((prev) => prev.map((inv) => (inv.id === invoiceId ? res.invoice! : inv)));
+        showToast(`Settlement proof rejected. Invoice restored to PENDING.`);
+      } else {
+        const updated: Invoice = {
+          ...target!,
+          status: 'PENDING',
+          payerNotes: reason ? `Rejected: ${reason}` : target?.payerNotes
+        };
+        setInvoices((prev) => prev.map((inv) => (inv.id === invoiceId ? updated : inv)));
+        showToast(`Settlement proof rejected.`);
+      }
+    } catch (e: any) {
+      console.error('Reject proof error:', e);
+      showToast(`Error rejecting proof: ${e.message}`);
+    } finally {
+      setIsVerifyingProof(false);
+      setVerificationInvoice(null);
     }
   };
 
@@ -1743,6 +1878,7 @@ export default function OrderSpotCollectPage() {
                 className="w-full h-11 sm:h-10 bg-slate-950 border border-slate-800 text-slate-200 text-xs font-semibold rounded-xl sm:rounded-2xl px-3.5 sm:px-4 pr-8 appearance-none focus:outline-none focus:border-emerald-500 cursor-pointer"
               >
                 <option value="ALL">All ({invoices.length})</option>
+                <option value="PENDING_VERIFICATION">⏳ Verify Proof ({invoices.filter((i) => i.status === 'PENDING_VERIFICATION').length})</option>
                 <option value="OVERDUE">Overdue ({invoices.filter((i) => i.status === 'OVERDUE').length})</option>
                 <option value="PENDING">Pending ({invoices.filter((i) => i.status === 'PENDING').length})</option>
                 <option value="PAID">Paid ({invoices.filter((i) => i.status === 'PAID').length})</option>
@@ -1864,13 +2000,18 @@ export default function OrderSpotCollectPage() {
                             <CheckCircle2 className="w-3 h-3" />
                             <span>PAID</span>
                           </span>
+                        ) : inv.status === 'PENDING_VERIFICATION' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/40 animate-pulse whitespace-nowrap">
+                            <Clock className="w-3 h-3" />
+                            <span>VERIFY PROOF</span>
+                          </span>
                         ) : isOverdue ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse whitespace-nowrap">
                             <AlertTriangle className="w-3 h-3" />
                             <span>OVERDUE</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">
                             <Clock className="w-3 h-3" />
                             <span>PENDING</span>
                           </span>
@@ -1896,6 +2037,12 @@ export default function OrderSpotCollectPage() {
                           <span>•</span>
                           <span>{inv.reminderCount || 0} Sent</span>
                         </div>
+                        {inv.status === 'PENDING_VERIFICATION' && (
+                          <div className="text-[11px] text-amber-300 font-semibold flex items-center gap-1 mt-1">
+                            <span>📸 Proof Uploaded</span>
+                            {inv.utrNumber && <span className="font-mono text-slate-300">(UTR: {inv.utrNumber})</span>}
+                          </div>
+                        )}
                       </div>
 
                       <div className="text-right shrink-0">
@@ -1913,7 +2060,15 @@ export default function OrderSpotCollectPage() {
 
                     {/* Action Bar (Large touch targets for mobile) */}
                     <div className="pt-2 border-t border-slate-800/60 flex flex-wrap items-center gap-2">
-                      {!isPaid && (
+                      {inv.status === 'PENDING_VERIFICATION' ? (
+                        <button
+                          onClick={() => setVerificationInvoice(inv)}
+                          className="flex-1 min-w-[140px] h-10 px-3 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-amber-500/20 cursor-pointer"
+                        >
+                          <ShieldCheck className="w-4 h-4" />
+                          <span>Verify & Close Invoice</span>
+                        </button>
+                      ) : !isPaid ? (
                         <button
                           onClick={() => handleSendWhatsAppReminder(inv)}
                           className="flex-1 min-w-[120px] h-10 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-600/20 cursor-pointer"
@@ -1921,7 +2076,7 @@ export default function OrderSpotCollectPage() {
                           <Send className="w-3.5 h-3.5" />
                           <span>Remind WhatsApp</span>
                         </button>
-                      )}
+                      ) : null}
 
                       {/* Direct Call Action */}
                       <a
@@ -2081,13 +2236,21 @@ export default function OrderSpotCollectPage() {
                                 <CheckCircle2 className="w-3 h-3" />
                                 <span>PAID</span>
                               </span>
+                            ) : inv.status === 'PENDING_VERIFICATION' ? (
+                              <button
+                                onClick={() => setVerificationInvoice(inv)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition-colors animate-pulse cursor-pointer shadow-sm"
+                              >
+                                <Clock className="w-3.5 h-3.5 text-amber-400" />
+                                <span>VERIFY PROOF</span>
+                              </button>
                             ) : isOverdue ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse">
                                 <AlertTriangle className="w-3 h-3" />
                                 <span>OVERDUE</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">
                                 <Clock className="w-3 h-3" />
                                 <span>PENDING</span>
                               </span>
@@ -2107,8 +2270,18 @@ export default function OrderSpotCollectPage() {
                           {/* Desktop Actions */}
                           <td className="p-4 pr-6 text-right whitespace-nowrap">
                             <div className="flex items-center justify-end gap-2">
-                              {/* Primary 1-Click WhatsApp Remind Button */}
-                              {!isPaid && (
+                              {/* Counter Desk Verify Button if Pending Verification */}
+                              {inv.status === 'PENDING_VERIFICATION' ? (
+                                <button
+                                  onClick={() => setVerificationInvoice(inv)}
+                                  title="Counter Desk: Verify Settlement Proof"
+                                  className="h-9 px-3 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 rounded-xl font-extrabold text-xs transition-all shadow-md shadow-amber-500/20 flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                                >
+                                  <ShieldCheck className="w-4 h-4" />
+                                  <span>Verify & Close</span>
+                                </button>
+                              ) : !isPaid ? (
+                                /* Primary 1-Click WhatsApp Remind Button */
                                 <button
                                   onClick={() => handleSendWhatsAppReminder(inv)}
                                   title="1-Click WhatsApp Reminder"
@@ -2117,7 +2290,7 @@ export default function OrderSpotCollectPage() {
                                   <Send className="w-3.5 h-3.5" />
                                   <span>Remind</span>
                                 </button>
-                              )}
+                              ) : null}
 
                               {/* Direct Call Customer Button */}
                               <a
@@ -2454,6 +2627,17 @@ export default function OrderSpotCollectPage() {
         rawData={uploadedRawData}
         vendorId={user?.uid || (isDemoMode ? 'demo_vendor_uid' : vendor.id)}
         onConfirmMapping={handleConfirmMappedInvoices}
+      />
+
+      {/* Proof-of-Settlement Counter Desk Verification Modal */}
+      <ProofVerificationModal
+        isOpen={!!verificationInvoice}
+        onClose={() => setVerificationInvoice(null)}
+        invoice={verificationInvoice}
+        vendor={vendor}
+        onApprove={handleApproveSettlementProof}
+        onReject={handleRejectSettlementProof}
+        isSubmitting={isVerifyingProof}
       />
     </div>
   );
