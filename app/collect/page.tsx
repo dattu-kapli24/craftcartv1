@@ -62,6 +62,7 @@ import {
   logReminderToFirestore,
   approveAndCloseInvoice,
   rejectInvoiceProof,
+  subscribeToVendorInvoices,
   auth
 } from '../../lib/firebase';
 import { parseTallyExcelFile, batchWriteInvoicesToFirestore, sanitizeIndianPhone, extractSpreadsheetHeadersAndRows, RawSpreadsheetData } from '../../utils/excelParser';
@@ -341,6 +342,17 @@ export default function OrderSpotCollectPage() {
 
     if (!authLoading) {
       loadData();
+
+      // Real-time Firestore invoice sync
+      const currentUid = user?.uid || (isDemoMode ? 'demo_vendor_uid' : null);
+      if (currentUid) {
+        const unsubscribe = subscribeToVendorInvoices(currentUid, (liveInvoices) => {
+          if (liveInvoices && liveInvoices.length > 0) {
+            setInvoices(liveInvoices);
+          }
+        });
+        return () => unsubscribe();
+      }
     }
   }, [user, authLoading, isDemoMode]);
 

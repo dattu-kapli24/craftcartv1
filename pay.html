@@ -175,28 +175,81 @@
 
       <!-- Primary 1-Click Pay Buttons for Mobile & Desktop -->
       <div class="space-y-3">
+        <!-- Awaiting UPI Payment Status Toast/Banner -->
+        <div id="awaitingPaymentBanner" class="hidden p-3.5 bg-gradient-to-r from-emerald-950/80 to-slate-900 border border-emerald-500/40 rounded-2xl animate-pulse">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+              <span class="w-3 h-3 rounded-full bg-emerald-400 animate-ping shrink-0"></span>
+              <div class="text-left">
+                <p class="text-xs font-bold text-white leading-tight" id="awaitingAppTitle">Switched to UPI App...</p>
+                <p class="text-[10px] text-emerald-300">Complete transfer in your app, then upload proof below</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              id="dismissAwaitingBtn"
+              class="text-[11px] font-bold text-slate-300 hover:text-white px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-all shrink-0"
+            >
+              Edit / Retry
+            </button>
+          </div>
+        </div>
+
         <a 
           id="primaryUpiBtn" 
           href="#" 
           class="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-[0.99] text-white rounded-2xl font-extrabold text-base transition-all shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2.5 pulse-subtle"
         >
-          <span class="text-xl">⚡</span>
+          <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
           <span>1-Click Pay via Any UPI App</span>
         </a>
 
-        <!-- UPI App Specific Quick Triggers -->
-        <div class="grid grid-cols-3 gap-2 pt-1">
-          <a id="gpayBtn" href="#" class="py-2.5 px-3 bg-slate-800/90 hover:bg-slate-750 border border-slate-700 rounded-xl text-xs font-bold text-slate-200 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all text-center">
-            <span class="text-sm">🟢</span>
-            <span>Google Pay</span>
+        <!-- UPI App Specific Quick Triggers with Official Brand Marks -->
+        <div class="grid grid-cols-3 gap-2.5 pt-1">
+          <!-- Google Pay -->
+          <a
+            id="gpayBtn"
+            href="#"
+            class="py-3 px-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-2xl text-xs font-bold text-slate-100 flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all text-center shadow-lg group"
+          >
+            <div class="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+              <svg class="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              </svg>
+            </div>
+            <span class="text-[11px] font-bold text-slate-200">Google Pay</span>
           </a>
-          <a id="phonepeBtn" href="#" class="py-2.5 px-3 bg-slate-800/90 hover:bg-slate-750 border border-slate-700 rounded-xl text-xs font-bold text-slate-200 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all text-center">
-            <span class="text-sm">🟣</span>
-            <span>PhonePe</span>
+
+          <!-- PhonePe -->
+          <a
+            id="phonepeBtn"
+            href="#"
+            class="py-3 px-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-purple-500/40 rounded-2xl text-xs font-bold text-slate-100 flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all text-center shadow-lg group"
+          >
+            <div class="w-8 h-8 rounded-xl bg-[#5f259f] flex items-center justify-center shadow-sm text-white font-extrabold text-sm group-hover:scale-105 transition-transform">
+              <!-- PhonePe 'पे' Hindi Letter Vector -->
+              <svg class="w-5 h-5 fill-white" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.8 13.6h-2.1v-2.2h-1.5c-1.4 0-2.3-.9-2.3-2.3s.9-2.3 2.3-2.3h3.6v6.8zm0-4.3h-3.6c-.4 0-.7.3-.7.7s.3.7.7.7h3.6v-1.4z"/>
+              </svg>
+            </div>
+            <span class="text-[11px] font-bold text-purple-300">PhonePe</span>
           </a>
-          <a id="paytmBtn" href="#" class="py-2.5 px-3 bg-slate-800/90 hover:bg-slate-750 border border-slate-700 rounded-xl text-xs font-bold text-slate-200 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all text-center">
-            <span class="text-sm">🔵</span>
-            <span>Paytm / BHIM</span>
+
+          <!-- Paytm / BHIM -->
+          <a
+            id="paytmBtn"
+            href="#"
+            class="py-3 px-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-cyan-500/40 rounded-2xl text-xs font-bold text-slate-100 flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all text-center shadow-lg group"
+          >
+            <div class="w-8 h-8 rounded-xl bg-[#002e6e] border border-[#00b9f5]/50 flex items-center justify-center shadow-sm text-cyan-400 font-extrabold text-[11px] group-hover:scale-105 transition-transform">
+              <span class="tracking-tighter font-black text-cyan-300">Pay<span class="text-white">tm</span></span>
+            </div>
+            <span class="text-[11px] font-bold text-cyan-300">Paytm / BHIM</span>
           </a>
         </div>
       </div>
@@ -456,7 +509,7 @@
   </footer>
 
   <script type="module">
-    import { getInvoiceById, submitInvoicePaymentProof } from './lib/firebase.ts';
+    import { getInvoiceById, submitInvoicePaymentProof, subscribeToInvoice } from './lib/firebase.ts';
 
     function showToast(msg) {
       const t = document.getElementById('toast');
@@ -486,6 +539,42 @@
     let isCustomAmountActive = false;
     let base64Receipt = '';
 
+    // Update UI dynamically based on live invoice status
+    function applyInvoiceStatusUpdate(invoice) {
+      if (!invoice) return;
+
+      if (invoice.status === 'PAID') {
+        const banner = document.getElementById('statusBanner');
+        banner.className = 'p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-xs block';
+        document.getElementById('statusBannerTitle').innerHTML = '<span class="text-emerald-400 text-base">✓</span> <span class="text-emerald-300">Invoice Fully Settled & Closed</span>';
+        document.getElementById('statusBannerDesc').textContent = 'This invoice has been audited, verified, and marked as PAID by the merchant.';
+        
+        // Hide awaiting banner if active
+        document.getElementById('awaitingPaymentBanner').classList.add('hidden');
+        
+        // Disable submit button and lock
+        const submitBtn = document.getElementById('submitProofBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Invoice Fully Settled & Paid';
+        submitBtn.className = 'w-full py-4 bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 font-extrabold rounded-2xl text-sm opacity-90 cursor-not-allowed flex items-center justify-center gap-2';
+        document.getElementById('submitProofHelpText').classList.add('hidden');
+
+        // Close modal if open
+        document.getElementById('successModal').classList.add('hidden');
+      } else if (invoice.status === 'PENDING_VERIFICATION') {
+        const banner = document.getElementById('statusBanner');
+        banner.className = 'p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-xs block';
+        document.getElementById('statusBannerTitle').innerHTML = '<span class="text-amber-400 text-base">⏳</span> <span class="text-amber-300">Payment Submitted — Pending Counter Verification</span>';
+        document.getElementById('statusBannerDesc').textContent = 'Your confirmation is logged. The counter desk is verifying the transfer.';
+      } else if (invoice.status === 'PARTIALLY_PAID') {
+        const banner = document.getElementById('statusBanner');
+        banner.className = 'p-4 rounded-2xl border border-blue-500/30 bg-blue-500/10 text-xs block';
+        document.getElementById('statusBannerTitle').innerHTML = '<span class="text-blue-400 text-base">ℹ️</span> <span class="text-blue-300">Partially Paid — Remaining Balance Active</span>';
+        const bal = invoice.outstandingAmount !== undefined ? invoice.outstandingAmount : invoice.amount;
+        document.getElementById('statusBannerDesc').textContent = `Merchant recorded a partial payment. Outstanding balance is ₹${Number(bal).toLocaleString('en-IN')}.`;
+      }
+    }
+
     // Async Fetch Invoice details if invoice ID is present in URL
     async function loadInvoiceFromDb() {
       if (!invoiceId) return;
@@ -501,23 +590,7 @@
           due = invoice.dueDate;
           vendorId = invoice.vendorId;
 
-          // Check if already paid or in pending verification
-          if (invoice.status === 'PAID') {
-            const banner = document.getElementById('statusBanner');
-            banner.className = 'p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-xs block';
-            document.getElementById('statusBannerTitle').innerHTML = '<span class="text-emerald-400 text-base">✓</span> <span class="text-emerald-300">Invoice Fully Settled & Closed</span>';
-            document.getElementById('statusBannerDesc').textContent = 'This invoice has already been verified and closed by the merchant.';
-            const submitBtn = document.getElementById('submitProofBtn');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Invoice Already Cleared';
-            submitBtn.className = 'w-full py-4 bg-slate-800 text-slate-400 font-extrabold rounded-2xl text-sm opacity-50 cursor-not-allowed flex items-center justify-center gap-2';
-            document.getElementById('submitProofHelpText').classList.add('hidden');
-          } else if (invoice.status === 'PENDING_VERIFICATION') {
-            const banner = document.getElementById('statusBanner');
-            banner.className = 'p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-xs block';
-            document.getElementById('statusBannerTitle').innerHTML = '<span class="text-amber-400 text-base">⏳</span> <span class="text-amber-300">Payment Submitted — Pending Counter Verification</span>';
-            document.getElementById('statusBannerDesc').textContent = 'Your confirmation is logged. The counter desk is verifying the transfer.';
-          }
+          applyInvoiceStatusUpdate(invoice);
         }
 
         if (vendor) {
@@ -542,6 +615,16 @@
       }
 
       renderUI();
+
+      // Attach Real-Time onSnapshot Firestore Listener
+      subscribeToInvoice(invoiceId, (liveInvoice) => {
+        if (liveInvoice) {
+          applyInvoiceStatusUpdate(liveInvoice);
+          if (liveInvoice.status === 'PAID') {
+            showToast('🎉 Great news! Your payment has just been verified and approved by the merchant.');
+          }
+        }
+      });
     }
 
     // Dynamic Deep-Link & Payment Payload Recalculator
@@ -672,12 +755,46 @@
       }
     }
 
-    // Auto-select UPI mode when any 1-click UPI button is tapped
+    // Auto-select UPI mode and show awaiting state when any 1-click UPI button is tapped
+    const awaitingBanner = document.getElementById('awaitingPaymentBanner');
+    const awaitingAppTitle = document.getElementById('awaitingAppTitle');
+    const dismissAwaitingBtn = document.getElementById('dismissAwaitingBtn');
+
+    if (dismissAwaitingBtn) {
+      dismissAwaitingBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        awaitingBanner.classList.add('hidden');
+        if (customAmountInput && isCustomAmountActive) {
+          customAmountInput.focus();
+        }
+      });
+    }
+
+    const appNameMap = {
+      primaryUpiBtn: 'UPI App',
+      gpayBtn: 'Google Pay',
+      phonepeBtn: 'PhonePe',
+      paytmBtn: 'Paytm'
+    };
+
     ['primaryUpiBtn', 'gpayBtn', 'phonepeBtn', 'paytmBtn'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.addEventListener('click', () => {
           setPaymentMethod('UPI');
+          if (awaitingBanner) {
+            const appName = appNameMap[id] || 'UPI App';
+            if (awaitingAppTitle) awaitingAppTitle.textContent = `Awaiting Payment in ${appName}...`;
+            awaitingBanner.classList.remove('hidden');
+          }
+          // Smooth scroll towards the proof upload section so customer easily sees where to upload confirmation
+          setTimeout(() => {
+            const proofSection = document.getElementById('proofUploadSection');
+            if (proofSection) {
+              proofSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 800);
         });
       }
     });

@@ -12,6 +12,7 @@ import {
   runTransaction,
   serverTimestamp,
   setLogLevel,
+  onSnapshot,
   type Firestore
 } from 'firebase/firestore';
 
@@ -284,6 +285,73 @@ export async function getVendorInvoices(userId: string): Promise<Invoice[]> {
   }
 
   return [];
+}
+
+/**
+ * Real-time listener for vendor invoices on the Collect Dashboard.
+ * Emits live updates whenever an invoice is added, proof submitted, or marked PAID.
+ */
+export function subscribeToVendorInvoices(
+  userId: string,
+  onUpdate: (invoices: Invoice[]) => void
+): () => void {
+  if (!userId) return () => {};
+
+  try {
+    const q = query(collection(db, 'invoices'), where('vendorId', '==', userId));
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const liveInvoices: Invoice[] = [];
+        querySnapshot.forEach((docSnap) => {
+          liveInvoices.push({ id: docSnap.id, ...docSnap.data() } as Invoice);
+        });
+        if (liveInvoices.length > 0) {
+          liveInvoices.sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          onUpdate(liveInvoices);
+        }
+      },
+      (error) => {
+        console.warn('subscribeToVendorInvoices onSnapshot error:', error);
+      }
+    );
+    return unsubscribe;
+  } catch (err) {
+    console.warn('subscribeToVendorInvoices init error:', err);
+    return () => {};
+  }
+}
+
+/**
+ * Real-time listener for a single invoice on the Payment Presentment page (pay.html).
+ * Instantly transitions the buyer view from PENDING_VERIFICATION to PAID in real-time.
+ */
+export function subscribeToInvoice(
+  invoiceId: string,
+  onUpdate: (invoice: Invoice | null) => void
+): () => void {
+  if (!invoiceId) return () => {};
+
+  try {
+    const docRef = doc(db, 'invoices', invoiceId);
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          onUpdate({ id: docSnap.id, ...docSnap.data() } as Invoice);
+        }
+      },
+      (error) => {
+        console.warn('subscribeToInvoice onSnapshot error:', error);
+      }
+    );
+    return unsubscribe;
+  } catch (err) {
+    console.warn('subscribeToInvoice init error:', err);
+    return () => {};
+  }
 }
 
 export async function saveInvoice(invoice: Invoice): Promise<void> {
