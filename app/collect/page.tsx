@@ -62,9 +62,10 @@ import {
   logReminderToFirestore,
   auth
 } from '../../lib/firebase';
-import { parseTallyExcelFile, batchWriteInvoicesToFirestore, sanitizeIndianPhone } from '../../utils/excelParser';
+import { parseTallyExcelFile, batchWriteInvoicesToFirestore, sanitizeIndianPhone, extractSpreadsheetHeadersAndRows, RawSpreadsheetData } from '../../utils/excelParser';
 import { VendorSettingsModal } from '../../components/VendorSettingsModal';
 import { EditInvoiceModal } from '../../components/EditInvoiceModal';
+import { ColumnMappingModal } from '../../components/ColumnMappingModal';
 
 export default function OrderSpotCollectPage() {
   const [user, setUser] = useState<any>(null);
@@ -147,6 +148,10 @@ export default function OrderSpotCollectPage() {
   const [manualPhone, setManualPhone] = useState('');
   const [manualAmount, setManualAmount] = useState('');
   const [manualDueDate, setManualDueDate] = useState('');
+
+  // Custom Column Mapping Modal State
+  const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
+  const [uploadedRawData, setUploadedRawData] = useState<RawSpreadsheetData | null>(null);
 
   // Processing & Toast Notifications
   const [isBatchReminding, setIsBatchReminding] = useState(false);
@@ -547,37 +552,57 @@ export default function OrderSpotCollectPage() {
     return result;
   }, [invoices, searchTerm, statusFilter, sortBy, sortOrder]);
 
-  // Excel / CSV Upload Handler
+  // Excel / CSV Upload Handler - Reads headers & opens interactive mapping modal
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const targetVendorId = user?.uid || (isDemoMode ? 'demo_vendor_uid' : vendor.id);
-
     try {
-      showToast('Parsing spreadsheet...');
-      const parsed = await parseTallyExcelFile(file, targetVendorId);
+      showToast('Reading file headers...');
+      const extracted = await extractSpreadsheetHeadersAndRows(file);
 
-      if (parsed.length === 0) {
-        showToast('No valid receivables found in the sheet.');
+      if (!extracted.headers || extracted.headers.length === 0) {
+        showToast('No readable columns found in the uploaded spreadsheet.');
         return;
       }
 
-      showToast(`Uploading ${parsed.length} invoices to Firestore...`);
-      await batchWriteInvoicesToFirestore(parsed, targetVendorId);
-
-      // Merge newly uploaded invoices with state
-      setInvoices((prev) => {
-        const parsedIds = new Set(parsed.map((p) => p.id));
-        const remaining = prev.filter((p) => !parsedIds.has(p.id));
-        return [...parsed, ...remaining];
-      });
-      showToast(`✓ Successfully imported & saved ${parsed.length} invoices to Firestore!`);
+      setUploadedRawData(extracted);
+      setIsMappingModalOpen(true);
     } catch (err: any) {
-      console.error('File upload / Firestore error:', err);
+      console.error('Spreadsheet header extraction error:', err);
       showToast(`Upload failed: ${err.message}`);
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Firestore Ingestion for user-confirmed mapped invoices
+  const handleConfirmMappedInvoices = async (mappedInvoices: Invoice[]) => {
+    const targetVendorId = user?.uid || (isDemoMode ? 'demo_vendor_uid' : vendor.id);
+
+    if (!mappedInvoices || mappedInvoices.length === 0) {
+      showToast('No invoices to ingest.');
+      setIsMappingModalOpen(false);
+      return;
+    }
+
+    try {
+      showToast(`Committing ${mappedInvoices.length} invoices to Firestore...`);
+      await batchWriteInvoicesToFirestore(mappedInvoices, targetVendorId);
+
+      // Merge mapped invoices into active table view
+      setInvoices((prev) => {
+        const parsedIds = new Set(mappedInvoices.map((p) => p.id));
+        const remaining = prev.filter((p) => !parsedIds.has(p.id));
+        return [...mappedInvoices, ...remaining];
+      });
+
+      setIsMappingModalOpen(false);
+      setUploadedRawData(null);
+      showToast(`✓ Successfully ingested ${mappedInvoices.length} invoices into Firestore!`);
+    } catch (err: any) {
+      console.error('Firestore batch ingestion error:', err);
+      showToast(`Ingestion error: ${err.message}`);
     }
   };
 
@@ -2418,6 +2443,18 @@ export default function OrderSpotCollectPage() {
           </div>
         </div>
       )}
+
+      {/* Interactive Custom Column Mapping Modal */}
+      <ColumnMappingModal
+        isOpen={isMappingModalOpen}
+        onClose={() => {
+          setIsMappingModalOpen(false);
+          setUploadedRawData(null);
+        }}
+        rawData={uploadedRawData}
+        vendorId={user?.uid || (isDemoMode ? 'demo_vendor_uid' : vendor.id)}
+        onConfirmMapping={handleConfirmMappedInvoices}
+      />
     </div>
   );
 }
