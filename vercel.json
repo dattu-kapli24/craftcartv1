@@ -1,0 +1,16 @@
+{
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/orderspot-collect/:path*", "destination": "/collect.html" },
+    { "source": "/orderspot-collect", "destination": "/collect.html" },
+    { "source": "/collect/:path*", "destination": "/collect.html" },
+    { "source": "/collect", "destination": "/collect.html" },
+    { "source": "/pay/:path*", "destination": "/pay.html" },
+    { "source": "/pay", "destination": "/pay.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

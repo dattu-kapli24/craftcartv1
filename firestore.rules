@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Vendor profiles - keyed by Auth UID
+    match /vendor_profiles/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Vendors collection
+    match /vendors/{vendorId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Invoices / Receivables
+    match /invoices/{invoiceId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+    }
+
+    // Reminder Logs
+    match /reminder_logs/{logId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Default fallback
+    match /{document=**} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}
