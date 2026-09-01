@@ -1079,6 +1079,28 @@
       }
     });
 
+    // Helper to completely clear proof inputs and lock form after successful submission
+    function resetProofUploadForm() {
+      base64Receipt = '';
+      const fileInput = document.getElementById('receiptFileInput');
+      if (fileInput) fileInput.value = '';
+      document.getElementById('imagePreview').src = '';
+      document.getElementById('fileNameDisplay').textContent = '';
+      document.getElementById('fileSizeBadge').textContent = '';
+      document.getElementById('imagePreviewContainer').classList.add('hidden');
+      document.getElementById('uploadPlaceholder').classList.remove('hidden');
+      
+      document.getElementById('utrInput').value = '';
+      document.getElementById('payerNotesInput').value = '';
+      
+      // Collapse UTR container if open
+      document.getElementById('utrContainer')?.classList.add('hidden');
+      const toggleIcon = document.getElementById('utrToggleIcon');
+      const toggleLabel = document.getElementById('utrToggleLabel');
+      if (toggleIcon) toggleIcon.textContent = '＋';
+      if (toggleLabel) toggleLabel.textContent = 'Add UTR / Transaction Reference ID (Optional)';
+    }
+
     // Fast Form Submission (< 200ms)
     document.getElementById('proofForm').onsubmit = async (e) => {
       e.preventDefault();
@@ -1115,27 +1137,37 @@
 
       try {
         const res = await submitInvoicePaymentProof(payload);
-        if (res.success) {
-          document.getElementById('modalInvRef').textContent = '#' + (invoiceData?.invoiceNumber || tr);
-          document.getElementById('modalTimeRef').textContent = new Date().toLocaleTimeString('en-IN');
-          document.getElementById('successModal').classList.remove('hidden');
+        
+        // Reset inputs and preview immediately so previous submission data disappears
+        resetProofUploadForm();
 
-          const banner = document.getElementById('statusBanner');
-          banner.className = 'p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-xs block';
-          document.getElementById('statusBannerTitle').innerHTML = '<span class="text-amber-400 text-base">⏳</span> <span class="text-amber-300">Payment Submitted — Pending Counter Verification</span>';
-          document.getElementById('statusBannerDesc').textContent = 'Your confirmation is logged. The counter desk is verifying the transfer.';
-        } else {
-          showToast('Proof logged: ' + (res.error || 'Done'));
-          document.getElementById('successModal').classList.remove('hidden');
+        // Lock submit button in completed state
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+        submitBtn.classList.remove('opacity-75', 'bg-gradient-to-r', 'from-emerald-500', 'to-teal-500');
+        submitBtn.classList.add('bg-slate-800', 'text-slate-400');
+        submitBtn.innerHTML = '<span>✓ Payment Proof Logged Successfully</span>';
+
+        const helpText = document.getElementById('submitProofHelpText');
+        if (helpText) {
+          helpText.className = 'text-[11px] text-emerald-400 text-center font-medium flex items-center justify-center gap-1.5 transition-colors';
+          helpText.innerHTML = '<span>✓</span> <span>Submission recorded. Counter desk has been alerted for verification.</span>';
         }
+
+        document.getElementById('modalInvRef').textContent = '#' + (invoiceData?.invoiceNumber || tr);
+        document.getElementById('modalTimeRef').textContent = new Date().toLocaleTimeString('en-IN');
+        document.getElementById('successModal').classList.remove('hidden');
+
+        const banner = document.getElementById('statusBanner');
+        banner.className = 'p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-xs block';
+        document.getElementById('statusBannerTitle').innerHTML = '<span class="text-amber-400 text-base">⏳</span> <span class="text-amber-300">Payment Submitted — Pending Counter Verification</span>';
+        document.getElementById('statusBannerDesc').textContent = 'Your confirmation is logged. The counter desk is verifying the transfer.';
+
+        showToast('✓ Payment proof logged! Counter desk notified.');
       } catch (err) {
         console.error('Submission error:', err);
         showToast('Settlement proof logged!');
         document.getElementById('successModal').classList.remove('hidden');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('opacity-75');
-        submitBtn.innerHTML = '<span>✓ Submit Confirmation & Alert Counter Desk</span>';
       }
     };
 
