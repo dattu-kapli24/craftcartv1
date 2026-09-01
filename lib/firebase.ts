@@ -549,6 +549,8 @@ export interface SettlementProofSubmission {
   vendorId: string;
   receiptUrl?: string; // Base64 data URL or uploaded URL
   utrNumber?: string;
+  amountPaid?: number;
+  submittedAmount?: number;
   paymentMethod?: 'UPI' | 'NEFT_RTGS' | 'IMPS' | 'CASH' | 'CHEQUE' | 'OTHER';
   payerNotes?: string;
 }
@@ -558,13 +560,15 @@ export async function submitInvoicePaymentProof(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const nowIso = new Date().toISOString();
+    const declaredAmount = proof.submittedAmount !== undefined ? proof.submittedAmount : (proof.amountPaid || 0);
     const updates: Partial<Invoice> = {
       status: 'PENDING_VERIFICATION',
       proofSubmittedAt: nowIso,
       receiptUrl: proof.receiptUrl || '',
       utrNumber: proof.utrNumber?.trim() || '',
       paymentMethod: proof.paymentMethod || 'UPI',
-      payerNotes: proof.payerNotes?.trim() || ''
+      payerNotes: proof.payerNotes?.trim() || '',
+      submittedAmount: declaredAmount > 0 ? declaredAmount : undefined
     };
 
     // Update in Firestore and local storage caches

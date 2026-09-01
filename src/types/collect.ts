@@ -42,6 +42,7 @@ export interface Invoice {
   receiptUrl?: string;
   utrNumber?: string;
   proofSubmittedAt?: string;
+  submittedAmount?: number;
   paymentMethod?: 'UPI' | 'NEFT_RTGS' | 'IMPS' | 'CASH' | 'CHEQUE' | 'OTHER';
   payerNotes?: string;
   verifiedAt?: string;

@@ -519,20 +519,38 @@ export default function OrderSpotCollectPage() {
   // Dynamic KPI Metric Calculations
   const metrics = useMemo(() => {
     const outstanding = invoices
-      .filter((inv) => inv.status === 'PENDING' || inv.status === 'OVERDUE' || inv.status === 'PENDING_VERIFICATION')
-      .reduce((sum, inv) => sum + inv.amount, 0);
+      .filter((inv) => inv.status === 'PENDING' || inv.status === 'OVERDUE' || inv.status === 'PENDING_VERIFICATION' || inv.status === 'PARTIALLY_PAID')
+      .reduce((sum, inv) => {
+        const out = inv.outstandingAmount !== undefined ? inv.outstandingAmount : inv.amount;
+        return sum + (out > 0 ? out : 0);
+      }, 0);
 
     const overdue = invoices.filter((inv) => inv.status === 'OVERDUE');
     const overdueCount = overdue.length;
-    const overdueAmount = overdue.reduce((sum, inv) => sum + inv.amount, 0);
+    const overdueAmount = overdue.reduce((sum, inv) => {
+      const out = inv.outstandingAmount !== undefined ? inv.outstandingAmount : inv.amount;
+      return sum + (out > 0 ? out : 0);
+    }, 0);
 
     const pendingVerification = invoices.filter((inv) => inv.status === 'PENDING_VERIFICATION');
     const pendingVerificationCount = pendingVerification.length;
-    const pendingVerificationAmount = pendingVerification.reduce((sum, inv) => sum + inv.amount, 0);
+    const pendingVerificationAmount = pendingVerification.reduce((sum, inv) => {
+      const amt = (inv.submittedAmount !== undefined && inv.submittedAmount > 0)
+        ? inv.submittedAmount
+        : (inv.outstandingAmount !== undefined ? inv.outstandingAmount : inv.amount);
+      return sum + (amt > 0 ? amt : 0);
+    }, 0);
 
-    const recovered = invoices
-      .filter((inv) => inv.status === 'PAID')
-      .reduce((sum, inv) => sum + (inv.paidAmount || inv.amount), 0);
+    // Recovered includes full clearance AND partial recoveries across all invoices!
+    const recovered = invoices.reduce((sum, inv) => {
+      let paid = 0;
+      if (inv.paidAmount !== undefined && inv.paidAmount > 0) {
+        paid = inv.paidAmount;
+      } else if (inv.status === 'PAID') {
+        paid = inv.originalAmount || inv.amount || 0;
+      }
+      return sum + paid;
+    }, 0);
 
     const totalRemindersSent = invoices.reduce((sum, inv) => sum + (inv.reminderCount || 0), 0);
 
@@ -1891,6 +1909,7 @@ export default function OrderSpotCollectPage() {
               >
                 <option value="ALL">All ({invoices.length})</option>
                 <option value="PENDING_VERIFICATION">⏳ Verify Proof ({invoices.filter((i) => i.status === 'PENDING_VERIFICATION').length})</option>
+                <option value="PARTIALLY_PAID">Partially Paid ({invoices.filter((i) => i.status === 'PARTIALLY_PAID').length})</option>
                 <option value="OVERDUE">Overdue ({invoices.filter((i) => i.status === 'OVERDUE').length})</option>
                 <option value="PENDING">Pending ({invoices.filter((i) => i.status === 'PENDING').length})</option>
                 <option value="PAID">Paid ({invoices.filter((i) => i.status === 'PAID').length})</option>
@@ -2016,6 +2035,11 @@ export default function OrderSpotCollectPage() {
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/40 animate-pulse whitespace-nowrap">
                             <Clock className="w-3 h-3" />
                             <span>VERIFY PROOF</span>
+                          </span>
+                        ) : inv.status === 'PARTIALLY_PAID' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 whitespace-nowrap">
+                            <Clock className="w-3 h-3" />
+                            <span>PARTIAL</span>
                           </span>
                         ) : isOverdue ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse whitespace-nowrap">
@@ -2256,6 +2280,11 @@ export default function OrderSpotCollectPage() {
                                 <Clock className="w-3.5 h-3.5 text-amber-400" />
                                 <span>VERIFY PROOF</span>
                               </button>
+                            ) : inv.status === 'PARTIALLY_PAID' ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                <Clock className="w-3 h-3" />
+                                <span>PARTIAL</span>
+                              </span>
                             ) : isOverdue ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse">
                                 <AlertTriangle className="w-3 h-3" />

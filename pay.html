@@ -273,20 +273,29 @@
               </button>
             </div>
 
-            <!-- Manual Copy UPI Fallback Pill -->
-            <div class="flex items-center justify-between gap-2 p-2.5 bg-slate-950 rounded-xl border border-slate-800/80 text-xs">
-              <div class="truncate">
-                <span class="text-[9px] uppercase font-bold text-slate-500 block">Merchant UPI VPA</span>
-                <span id="quickUpiVpaText" class="font-mono font-bold text-emerald-400 truncate">orderspot@icici</span>
+            <!-- Manual Copy UPI Fallback Pill & Security Advisory -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between gap-2 p-2.5 bg-slate-950 rounded-xl border border-slate-800/80 text-xs">
+                <div class="truncate">
+                  <span class="text-[9px] uppercase font-bold text-slate-500 block">Merchant UPI VPA</span>
+                  <span id="quickUpiVpaText" class="font-mono font-bold text-emerald-400 truncate">orderspot@icici</span>
+                </div>
+                <button 
+                  type="button" 
+                  id="quickCopyUpiBtn" 
+                  onclick="copyVpaToClipboard()"
+                  class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-xs border border-slate-700 transition-all shrink-0 cursor-pointer active:scale-95 flex items-center gap-1"
+                >
+                  <span>📋 Copy VPA</span>
+                </button>
               </div>
-              <button 
-                type="button" 
-                id="quickCopyUpiBtn" 
-                onclick="copyVpaToClipboard()"
-                class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-xs border border-slate-700 transition-all shrink-0 cursor-pointer active:scale-95"
-              >
-                Copy VPA
-              </button>
+
+              <div class="p-2 bg-slate-950/60 rounded-xl border border-slate-800/60 text-[10px] text-slate-400 flex items-start gap-1.5">
+                <span class="text-amber-400 shrink-0">💡</span>
+                <p>
+                  <strong class="text-slate-300">Bank App Security Tip:</strong> If your UPI app shows a security check or restriction for web links, tap <strong>Copy VPA</strong> and paste it directly inside your GPay, PhonePe, or Paytm app, or scan the QR code below.
+                </p>
+              </div>
             </div>
 
             <!-- Smooth Next Step CTA -->
@@ -680,7 +689,7 @@
       });
     };
 
-    // Robust Native UPI Deep Link Launcher with Intent Support
+    // Robust Native UPI Deep Link Launcher with Universal Scheme Support
     window.launchUpi = function(targetApp = 'any') {
       const targetVpa = (invoiceData?.upiId || vendorData?.upiId || pa || 'orderspot@icici').trim();
       const targetName = (invoiceData?.merchantName || vendorData?.businessName || pn || 'Merchant').replace(/[^a-zA-Z0-9 ]/g, '').trim() || 'Merchant';
@@ -690,24 +699,21 @@
       const encodedName = encodeURIComponent(targetName);
       const encodedNote = encodeURIComponent(cleanNote);
 
-      // Base NPCI Compliant Standard UPI URL
+      // Base NPCI Standard UPI URL (Universal support across GPay, PhonePe, Paytm, BHIM, CRED)
       const standardUpiUrl = `upi://pay?pa=${targetVpa}&pn=${encodedName}&am=${cleanAmt}&cu=INR&tn=${encodedNote}`;
 
-      const isAndroid = /Android/i.test(navigator.userAgent);
       let targetUrl = standardUpiUrl;
       let appDisplayName = 'Installed UPI App';
 
-      if (isAndroid) {
-        if (targetApp === 'gpay') {
-          appDisplayName = 'Google Pay';
-          targetUrl = `intent://pay?pa=${targetVpa}&pn=${encodedName}&am=${cleanAmt}&cu=INR&tn=${encodedNote}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
-        } else if (targetApp === 'phonepe') {
-          appDisplayName = 'PhonePe';
-          targetUrl = `intent://pay?pa=${targetVpa}&pn=${encodedName}&am=${cleanAmt}&cu=INR&tn=${encodedNote}#Intent;scheme=upi;package=com.phonepe.app;end`;
-        } else if (targetApp === 'paytm') {
-          appDisplayName = 'Paytm';
-          targetUrl = `intent://pay?pa=${targetVpa}&pn=${encodedName}&am=${cleanAmt}&cu=INR&tn=${encodedNote}#Intent;scheme=upi;package=net.one97.paytm;end`;
-        }
+      if (targetApp === 'gpay') {
+        appDisplayName = 'Google Pay';
+        targetUrl = standardUpiUrl;
+      } else if (targetApp === 'phonepe') {
+        appDisplayName = 'PhonePe';
+        targetUrl = `phonepe://pay?pa=${targetVpa}&pn=${encodedName}&am=${cleanAmt}&cu=INR&tn=${encodedNote}`;
+      } else if (targetApp === 'paytm') {
+        appDisplayName = 'Paytm';
+        targetUrl = `paytmmp://pay?pa=${targetVpa}&pn=${encodedName}&am=${cleanAmt}&cu=INR&tn=${encodedNote}`;
       }
 
       // Show Awaiting Payment Banner
@@ -718,18 +724,27 @@
         banner.classList.remove('hidden');
       }
 
-      // Trigger app launch
+      // Trigger app launch via clean anchor dispatch (bypasses browser security blocks on window.location)
       try {
-        window.location.href = targetUrl;
-        
-        // If specific intent fails or package is missing, fallback to standard upi:// after 1.2s
+        const link = document.createElement('a');
+        link.href = targetUrl;
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Fallback to standard universal UPI if specific app scheme doesn't open
         if (targetUrl !== standardUpiUrl) {
           setTimeout(() => {
-            window.location.href = standardUpiUrl;
-          }, 1200);
+            const fallbackLink = document.createElement('a');
+            fallbackLink.href = standardUpiUrl;
+            document.body.appendChild(fallbackLink);
+            fallbackLink.click();
+            document.body.removeChild(fallbackLink);
+          }, 1000);
         }
       } catch (err) {
-        console.warn('Direct launch error, falling back to standard UPI:', err);
+        console.warn('Anchor dispatch error, falling back to standard UPI:', err);
         window.location.href = standardUpiUrl;
       }
 
@@ -739,7 +754,7 @@
         if (proofSection) {
           proofSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-      }, 800);
+      }, 1000);
     };
 
     document.getElementById('dismissAwaitingBtn')?.addEventListener('click', () => {
@@ -1131,6 +1146,7 @@
         receiptUrl: base64Receipt,
         utrNumber: utr,
         amountPaid: payingAmount,
+        submittedAmount: payingAmount,
         paymentMethod: selectedMethod,
         payerNotes: notes ? notes : (payingAmount < totalDueAmount ? `Paid partial ₹${payingAmount.toLocaleString('en-IN')}` : '')
       };

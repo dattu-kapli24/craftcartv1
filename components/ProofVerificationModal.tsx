@@ -42,13 +42,22 @@ export function ProofVerificationModal({
   
   // Accountant Audit & Adjustment State
   const initialOutstanding = invoice ? (invoice.outstandingAmount !== undefined ? invoice.outstandingAmount : invoice.amount) : 0;
-  const [confirmedAmount, setConfirmedAmount] = React.useState<number>(initialOutstanding);
+  const initialPrefill = invoice
+    ? (invoice.submittedAmount !== undefined && invoice.submittedAmount > 0
+        ? Math.min(invoice.submittedAmount, initialOutstanding > 0 ? initialOutstanding : invoice.submittedAmount)
+        : initialOutstanding)
+    : 0;
+  const [confirmedAmount, setConfirmedAmount] = React.useState<number>(initialPrefill);
   const [accountantNotes, setAccountantNotes] = React.useState<string>('');
 
   React.useEffect(() => {
     if (invoice) {
       const out = invoice.outstandingAmount !== undefined ? invoice.outstandingAmount : invoice.amount;
-      setConfirmedAmount(out);
+      // Prefill with actual claimed recovered amount if submitted by buyer
+      const prefill = (invoice.submittedAmount !== undefined && invoice.submittedAmount > 0)
+        ? Math.min(invoice.submittedAmount, out > 0 ? out : invoice.submittedAmount)
+        : out;
+      setConfirmedAmount(prefill);
       setAccountantNotes('');
       setShowRejectInput(false);
       setRejectReason('');
@@ -58,6 +67,7 @@ export function ProofVerificationModal({
   if (!isOpen || !invoice) return null;
 
   const currentOutstanding = invoice.outstandingAmount !== undefined ? invoice.outstandingAmount : invoice.amount;
+  const claimedAmount = invoice.submittedAmount !== undefined && invoice.submittedAmount > 0 ? invoice.submittedAmount : null;
   const remainingAfterAudit = Math.max(0, currentOutstanding - (Number(confirmedAmount) || 0));
   const isPartialSettlement = confirmedAmount > 0 && confirmedAmount < currentOutstanding;
   const isFullSettlement = confirmedAmount >= currentOutstanding;
@@ -217,6 +227,42 @@ export function ProofVerificationModal({
                 Due: <strong className="text-emerald-400">₹{currentOutstanding.toLocaleString('en-IN')}</strong>
               </span>
             </div>
+
+            {claimedAmount && claimedAmount > 0 && (
+              <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/30 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-1.5 text-blue-300">
+                  <CreditCard className="w-3.5 h-3.5 text-blue-400" />
+                  <span>
+                    Buyer Reported Transfer: <strong className="text-white font-mono">₹{claimedAmount.toLocaleString('en-IN')}</strong>
+                    {claimedAmount < currentOutstanding ? ' (Partial Payment)' : ' (Full Settlement)'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmedAmount(claimedAmount)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                      confirmedAmount === claimedAmount
+                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-extrabold shadow-sm'
+                        : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
+                    }`}
+                  >
+                    Prefill Claimed (₹{claimedAmount.toLocaleString('en-IN')})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmedAmount(currentOutstanding)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                      confirmedAmount === currentOutstanding
+                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-extrabold shadow-sm'
+                        : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
+                    }`}
+                  >
+                    Full Balance (₹{currentOutstanding.toLocaleString('en-IN')})
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>

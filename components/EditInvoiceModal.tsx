@@ -62,6 +62,9 @@ export function EditInvoiceModal({
 
     if (finalAmount <= 0) {
       nextStatus = 'PAID';
+    } else if (newPaidTotal > 0) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      nextStatus = dueDate < todayStr ? 'OVERDUE' : 'PARTIALLY_PAID';
     } else {
       const todayStr = new Date().toISOString().split('T')[0];
       nextStatus = dueDate < todayStr ? 'OVERDUE' : 'PENDING';
@@ -82,6 +85,7 @@ export function EditInvoiceModal({
       customerName: customerName.trim() || invoice.customerName,
       phone: formattedPhone,
       amount: finalAmount,
+      outstandingAmount: finalAmount,
       originalAmount: invoice.originalAmount || (currentAmountNum + prevPaid),
       paidAmount: newPaidTotal,
       dueDate,
