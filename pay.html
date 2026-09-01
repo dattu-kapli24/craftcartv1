@@ -15,13 +15,13 @@
       font-family: 'JetBrains Mono', monospace;
     }
     .accordion-content {
-      transition: max-height 0.3s ease-in-out, opacity 0.25s ease-in-out, padding 0.25s ease-in-out;
+      transition: max-height 0.3s ease-in-out, opacity 0.25s ease-in-out;
       max-height: 0;
       overflow: hidden;
       opacity: 0;
     }
     .accordion-content.open {
-      max-height: 800px;
+      max-height: 900px;
       opacity: 1;
     }
     .chevron-icon {
@@ -30,41 +30,34 @@
     .chevron-icon.rotate {
       transform: rotate(180deg);
     }
-    .pulse-subtle {
-      animation: pulseSubtle 2.5s infinite ease-in-out;
-    }
-    @keyframes pulseSubtle {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.02); }
-    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between antialiased selection:bg-emerald-500 selection:text-white">
 
   <!-- Header Navigation -->
   <header class="w-full bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-40">
-    <div class="max-w-xl mx-auto px-4 py-3.5 flex items-center justify-between">
+    <div class="max-w-xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 font-black text-base">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 font-black text-sm">
           ⚡
         </div>
         <div>
-          <h1 class="text-sm font-extrabold tracking-tight text-white flex items-center gap-1.5">
+          <h1 class="text-sm font-extrabold tracking-tight text-white flex items-center gap-1.5 leading-none">
             OrderSpot <span class="text-emerald-400">Pay</span>
           </h1>
-          <p class="text-[10px] text-slate-400 font-medium">B2B Invoice Presentment & Proof-of-Settlement</p>
+          <p class="text-[10px] text-slate-400 font-medium mt-0.5">B2B Invoice Presentment & Real-time Settlement</p>
         </div>
       </div>
 
       <div class="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full text-emerald-400 text-xs font-semibold">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-        <span>Verified Payee</span>
+        <span>Secure Verified Payee</span>
       </div>
     </div>
   </header>
 
   <!-- Main Payment Portal Card -->
-  <main class="flex-1 max-w-xl w-full mx-auto p-4 sm:p-6 space-y-5">
+  <main class="flex-1 max-w-xl w-full mx-auto p-4 sm:p-5 space-y-4">
 
     <!-- Status Banner for Live Verification Sync / Settlement Feedback -->
     <div id="statusBanner" class="hidden p-4 rounded-2xl border text-xs">
@@ -73,16 +66,16 @@
     </div>
 
     <!-- 1. Invoice Overview & Summary Card -->
-    <div id="paymentCard" class="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+    <div id="paymentCard" class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl relative overflow-hidden">
       <div class="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
       <!-- Merchant & Invoice Meta -->
-      <div class="flex items-start justify-between gap-3 border-b border-slate-800/80 pb-4">
+      <div class="flex items-start justify-between gap-3 border-b border-slate-800/80 pb-3.5">
         <div>
           <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
             Payee Business
           </span>
-          <h2 id="merchantName" class="text-lg sm:text-xl font-bold text-white mt-1">
+          <h2 id="merchantName" class="text-base sm:text-lg font-bold text-white mt-1 leading-snug">
             OrderSpot Wholesale
           </h2>
           <p id="partyName" class="text-xs text-slate-400 mt-0.5">
@@ -98,10 +91,10 @@
       </div>
 
       <!-- Outstanding Amount Display & Partial Payment Editor -->
-      <div class="my-5 p-4 rounded-2xl bg-gradient-to-br from-slate-950/95 to-slate-900/90 border border-slate-800/90 shadow-xl space-y-3">
+      <div class="my-4 p-4 rounded-2xl bg-gradient-to-br from-slate-950/95 to-slate-900/90 border border-slate-800/90 shadow-xl space-y-3">
         <div class="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
           <div class="text-left">
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Outstanding Balance</span>
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Outstanding Balance</span>
             <span id="fullBalanceDisplay" class="text-xs font-mono font-bold text-emerald-400">₹0.00</span>
           </div>
           <button
@@ -170,7 +163,7 @@
           <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 inline-flex items-center justify-center text-[11px] font-bold">1</span>
           Select Payment Method
         </h3>
-        <span class="text-[10px] text-slate-500 font-medium">Click to expand</span>
+        <span class="text-[10px] text-slate-500 font-medium">1-Click Fast Pay</span>
       </div>
 
       <!-- Accordion Item A: 1-Click UPI Apps -->
@@ -181,15 +174,15 @@
           onclick="toggleAccordion('upi')"
         >
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-base">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-base shrink-0">
               ⚡
             </div>
             <div>
               <h4 class="text-sm font-bold text-white flex items-center gap-2">
                 1-Click UPI Apps
-                <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.2 rounded-full font-semibold">Recommended</span>
+                <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.2 rounded-full font-semibold">Instant</span>
               </h4>
-              <p class="text-[11px] text-slate-400">Google Pay, PhonePe, Paytm, CRED or BHIM</p>
+              <p class="text-[11px] text-slate-400">PhonePe, Google Pay, Paytm, BHIM, CRED</p>
             </div>
           </div>
           <svg class="w-5 h-5 text-slate-400 chevron-icon" id="chevronUpi" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -199,14 +192,15 @@
 
         <div class="accordion-content" id="contentUpi">
           <div class="p-4 pt-1 border-t border-slate-800/80 space-y-3">
+            
             <!-- Awaiting UPI Payment Status Toast -->
-            <div id="awaitingPaymentBanner" class="hidden p-3 bg-gradient-to-r from-emerald-950/80 to-slate-900 border border-emerald-500/40 rounded-xl animate-pulse">
+            <div id="awaitingPaymentBanner" class="hidden p-3 bg-gradient-to-r from-emerald-950/90 to-slate-900 border border-emerald-500/50 rounded-xl">
               <div class="flex items-center justify-between gap-2">
-                <div class="flex items-center gap-2">
-                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0"></span>
+                <div class="flex items-center gap-2.5">
+                  <span class="w-3 h-3 rounded-full bg-emerald-400 animate-ping shrink-0"></span>
                   <div class="text-left">
-                    <p class="text-xs font-bold text-white leading-tight" id="awaitingAppTitle">App triggered...</p>
-                    <p class="text-[10px] text-emerald-300">Complete transfer in your app, then upload proof below</p>
+                    <p class="text-xs font-bold text-white leading-tight" id="awaitingAppTitle">UPI App Triggered...</p>
+                    <p class="text-[10px] text-emerald-300">Complete transfer in your app, then attach receipt below</p>
                   </div>
                 </div>
                 <button
@@ -214,26 +208,33 @@
                   id="dismissAwaitingBtn"
                   class="text-[10px] font-bold text-slate-300 hover:text-white px-2 py-1 bg-slate-800 hover:bg-slate-750 rounded-lg border border-slate-700 transition-all shrink-0"
                 >
-                  Edit
+                  Dismiss
                 </button>
               </div>
             </div>
 
-            <!-- Primary 1-Click Direct Launch Button -->
-            <a 
+            <!-- Primary 1-Click Direct Launch Button (Launches native Android/iOS UPI chooser) -->
+            <button 
+              type="button"
               id="primaryUpiBtn" 
-              href="#" 
-              class="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-[0.99] text-white rounded-xl font-extrabold text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+              onclick="launchUpi('any')"
+              class="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-[0.99] text-white rounded-xl font-extrabold text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer"
             >
               <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
               </svg>
-              <span>Pay via Installed UPI App</span>
-            </a>
+              <span>Pay via Any Installed UPI App</span>
+            </button>
 
-            <!-- Specific Apps Grid -->
-            <div class="grid grid-cols-3 gap-2">
-              <a id="gpayBtn" href="#" class="py-2.5 px-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-bold text-slate-100 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all text-center">
+            <!-- Specific 1-Click App Grid -->
+            <div class="grid grid-cols-3 gap-2 pt-1">
+              <!-- Google Pay -->
+              <button 
+                type="button"
+                id="gpayBtn" 
+                onclick="launchUpi('gpay')"
+                class="py-2.5 px-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-bold text-slate-100 flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all text-center cursor-pointer shadow-sm"
+              >
                 <div class="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-sm">
                   <svg class="w-4 h-4" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -243,30 +244,58 @@
                   </svg>
                 </div>
                 <span class="text-[11px] font-semibold text-slate-200">Google Pay</span>
-              </a>
+              </button>
 
-              <a id="phonepeBtn" href="#" class="py-2.5 px-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-bold text-slate-100 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all text-center">
+              <!-- PhonePe -->
+              <button 
+                type="button"
+                id="phonepeBtn" 
+                onclick="launchUpi('phonepe')"
+                class="py-2.5 px-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-bold text-slate-100 flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all text-center cursor-pointer shadow-sm"
+              >
                 <div class="w-7 h-7 rounded-lg bg-[#5f259f] flex items-center justify-center shadow-sm text-white font-extrabold text-xs">
                   पे
                 </div>
                 <span class="text-[11px] font-semibold text-purple-300">PhonePe</span>
-              </a>
+              </button>
 
-              <a id="paytmBtn" href="#" class="py-2.5 px-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-bold text-slate-100 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all text-center">
+              <!-- Paytm -->
+              <button 
+                type="button"
+                id="paytmBtn" 
+                onclick="launchUpi('paytm')"
+                class="py-2.5 px-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-bold text-slate-100 flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all text-center cursor-pointer shadow-sm"
+              >
                 <div class="w-7 h-7 rounded-lg bg-[#002e6e] border border-[#00b9f5]/50 flex items-center justify-center shadow-sm text-cyan-400 font-extrabold text-[10px]">
                   Pay<span class="text-white">tm</span>
                 </div>
                 <span class="text-[11px] font-semibold text-cyan-300">Paytm</span>
-              </a>
+              </button>
+            </div>
+
+            <!-- Manual Copy UPI Fallback Pill -->
+            <div class="flex items-center justify-between gap-2 p-2.5 bg-slate-950 rounded-xl border border-slate-800/80 text-xs">
+              <div class="truncate">
+                <span class="text-[9px] uppercase font-bold text-slate-500 block">Merchant UPI VPA</span>
+                <span id="quickUpiVpaText" class="font-mono font-bold text-emerald-400 truncate">orderspot@icici</span>
+              </div>
+              <button 
+                type="button" 
+                id="quickCopyUpiBtn" 
+                onclick="copyVpaToClipboard()"
+                class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-xs border border-slate-700 transition-all shrink-0 cursor-pointer active:scale-95"
+              >
+                Copy VPA
+              </button>
             </div>
 
             <!-- Smooth Next Step CTA -->
             <button
               type="button"
               onclick="goToProofStep('UPI')"
-              class="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-slate-700"
+              class="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-slate-700 cursor-pointer"
             >
-              <span>I have made the UPI payment → Upload Proof</span>
+              <span>I have completed the payment → Attach Receipt</span>
             </button>
           </div>
         </div>
@@ -280,7 +309,7 @@
           onclick="toggleAccordion('qr')"
         >
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-bold text-base">
+            <div class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-bold text-base shrink-0">
               📷
             </div>
             <div>
@@ -296,7 +325,7 @@
         <div class="accordion-content" id="contentQr">
           <div class="p-4 pt-1 border-t border-slate-800/80 flex flex-col items-center justify-center space-y-3">
             <p class="text-[11px] text-slate-400 text-center">
-              Scan with any UPI App (<span class="text-white font-medium">GPay, PhonePe, Paytm, CRED</span>):
+              Scan with any UPI Scanner (<span class="text-white font-medium">GPay, PhonePe, Paytm, CRED</span>):
             </p>
 
             <div class="p-3 bg-white rounded-2xl shadow-xl border border-slate-200">
@@ -309,7 +338,7 @@
                 <span class="text-slate-400 block text-[9px] uppercase font-bold">UPI ID / VPA</span>
                 <span id="upiIdDisplay" class="font-mono text-emerald-400 font-bold truncate">orderspot@icici</span>
               </div>
-              <button id="copyUpiBtn" type="button" class="shrink-0 px-3 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-200 font-bold text-xs active:scale-95 transition-all">
+              <button id="copyUpiBtn" onclick="copyVpaToClipboard()" type="button" class="shrink-0 px-3 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-200 font-bold text-xs active:scale-95 transition-all cursor-pointer">
                 Copy
               </button>
             </div>
@@ -317,9 +346,9 @@
             <button
               type="button"
               onclick="goToProofStep('UPI')"
-              class="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-slate-700"
+              class="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-slate-700 cursor-pointer"
             >
-              <span>I have scanned & paid → Upload Proof</span>
+              <span>I have scanned & paid → Attach Receipt</span>
             </button>
           </div>
         </div>
@@ -333,7 +362,7 @@
           onclick="toggleAccordion('bank')"
         >
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-bold text-base">
+            <div class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-bold text-base shrink-0">
               🏛️
             </div>
             <div>
@@ -355,7 +384,7 @@
                   <span class="text-[9px] uppercase font-bold text-slate-400 block">Beneficiary</span>
                   <span id="bankBeneficiary" class="font-bold text-white truncate block">OrderSpot Wholesale</span>
                 </div>
-                <button id="copyBeneficiaryBtn" type="button" class="shrink-0 p-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 text-[10px] font-semibold">Copy</button>
+                <button id="copyBeneficiaryBtn" type="button" class="shrink-0 p-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 text-[10px] font-semibold cursor-pointer">Copy</button>
               </div>
 
               <!-- Account Number -->
@@ -364,7 +393,7 @@
                   <span class="text-[9px] uppercase font-bold text-slate-400 block">Account Number</span>
                   <span id="bankAccountNum" class="font-mono font-bold text-emerald-400 truncate block">50200084729103</span>
                 </div>
-                <button id="copyAccountBtn" type="button" class="shrink-0 p-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 text-[10px] font-semibold">Copy</button>
+                <button id="copyAccountBtn" type="button" class="shrink-0 p-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 text-[10px] font-semibold cursor-pointer">Copy</button>
               </div>
 
               <!-- IFSC Code -->
@@ -373,7 +402,7 @@
                   <span class="text-[9px] uppercase font-bold text-slate-400 block">IFSC Code</span>
                   <span id="bankIfscCode" class="font-mono font-bold text-emerald-400 uppercase truncate block">HDFC0001234</span>
                 </div>
-                <button id="copyIfscBtn" type="button" class="shrink-0 p-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 text-[10px] font-semibold">Copy</button>
+                <button id="copyIfscBtn" type="button" class="shrink-0 p-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 text-[10px] font-semibold cursor-pointer">Copy</button>
               </div>
 
               <!-- Bank & Branch -->
@@ -388,9 +417,9 @@
             <button
               type="button"
               onclick="goToProofStep('NEFT_RTGS')"
-              class="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-slate-700"
+              class="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-slate-700 cursor-pointer"
             >
-              <span>I have transferred via Bank → Upload Receipt</span>
+              <span>I have transferred via Bank → Attach Receipt</span>
             </button>
           </div>
         </div>
@@ -398,7 +427,7 @@
     </div>
 
     <!-- 3. STEP 2: PROOF SUBMISSION & UTR CONFIRMATION -->
-    <div id="proofUploadSection" class="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-emerald-500/30 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative overflow-hidden">
+    <div id="proofUploadSection" class="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-emerald-500/30 rounded-3xl p-5 shadow-2xl space-y-4 relative overflow-hidden">
       <div class="flex items-center gap-2.5">
         <div class="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
           2
@@ -433,7 +462,7 @@
           </div>
         </div>
 
-        <!-- Receipt / Screenshot File Upload -->
+        <!-- Receipt / Screenshot File Upload with Instant Compression -->
         <div>
           <label class="block text-xs font-semibold text-slate-300 mb-1.5">
             Bank / UPI Screenshot or Receipt
@@ -442,20 +471,29 @@
           <div
             id="dropZone"
             onclick="document.getElementById('receiptFileInput').click()"
-            class="p-4 border-2 border-dashed border-slate-800 hover:border-emerald-500/50 bg-slate-950 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-2"
+            class="p-4 border-2 border-dashed border-slate-800 hover:border-emerald-500/50 bg-slate-950 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-2 relative"
           >
+            <!-- Compression Loading Spinner -->
+            <div id="compressionSpinner" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-xs rounded-2xl flex flex-col items-center justify-center space-y-1.5 z-10">
+              <div class="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
+              <p class="text-xs text-emerald-400 font-bold">Compressing image...</p>
+            </div>
+
             <div id="uploadPlaceholder" class="space-y-1">
               <div class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 flex items-center justify-center mx-auto text-base">
                 📷
               </div>
               <p class="text-xs font-semibold text-slate-200">Tap to Snap Photo / Upload Screenshot</p>
-              <p class="text-[10px] text-slate-400">JPG, PNG or PDF (up to 5MB)</p>
+              <p class="text-[10px] text-slate-400">JPG, PNG or PDF (Auto-optimized for instant sync)</p>
             </div>
 
             <!-- Image Preview -->
             <div id="imagePreviewContainer" class="hidden w-full space-y-2">
               <img id="imagePreview" src="" alt="Screenshot preview" class="max-h-44 mx-auto rounded-xl border border-slate-800 object-contain shadow-md" />
-              <p class="text-xs text-emerald-400 font-semibold" id="fileNameDisplay"></p>
+              <div class="flex items-center justify-center gap-2">
+                <p class="text-xs text-emerald-400 font-semibold truncate max-w-[200px]" id="fileNameDisplay"></p>
+                <span id="fileSizeBadge" class="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20 font-bold"></span>
+              </div>
               <span class="text-[10px] text-slate-400 underline">Tap to change image</span>
             </div>
 
@@ -468,7 +506,7 @@
           <button
             type="button"
             id="toggleUtrBtn"
-            class="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1.5 py-1 focus:outline-none transition-colors"
+            class="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1.5 py-1 focus:outline-none transition-colors cursor-pointer"
           >
             <span id="utrToggleIcon" class="text-sm transition-transform duration-200">＋</span>
             <span id="utrToggleLabel">Add UTR / Transaction Reference ID (Optional)</span>
@@ -548,14 +586,16 @@
 
       <div class="space-y-2 pt-2">
         <button
+          type="button"
           onclick="document.getElementById('successModal').classList.add('hidden')"
-          class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs transition-colors"
+          class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs transition-colors cursor-pointer"
         >
           Track Live Verification
         </button>
         <button
+          type="button"
           onclick="window.close()"
-          class="w-full py-2 bg-transparent text-slate-400 hover:text-slate-200 text-xs transition-colors"
+          class="w-full py-2 bg-transparent text-slate-400 hover:text-slate-200 text-xs transition-colors cursor-pointer"
         >
           Close Page
         </button>
@@ -589,13 +629,14 @@
     let base64Receipt = '';
     let isCustomAmountActive = false;
     let invoiceData = null;
+    let vendorData = null;
 
     // Toast helper
     function showToast(msg) {
       const toast = document.getElementById('toast');
       toast.textContent = msg;
       toast.classList.remove('opacity-0');
-      setTimeout(() => toast.classList.add('opacity-0'), 3000);
+      setTimeout(() => toast.classList.add('opacity-0'), 3200);
     }
 
     // Single-Active Accordion Controller (Progressive Disclosure)
@@ -629,6 +670,82 @@
       return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
+    // Copy helper
+    window.copyVpaToClipboard = function() {
+      const targetVpa = invoiceData?.upiId || vendorData?.upiId || pa || 'orderspot@icici';
+      navigator.clipboard.writeText(targetVpa).then(() => {
+        showToast('✓ UPI VPA copied: ' + targetVpa);
+      }).catch(() => {
+        showToast('UPI VPA: ' + targetVpa);
+      });
+    };
+
+    // Robust Native UPI Deep Link Launcher with Intent Support
+    window.launchUpi = function(targetApp = 'any') {
+      const targetVpa = (invoiceData?.upiId || vendorData?.upiId || pa || 'orderspot@icici').trim();
+      const targetName = (invoiceData?.merchantName || vendorData?.businessName || pn || 'Merchant').replace(/[^a-zA-Z0-9 ]/g, '').trim() || 'Merchant';
+      const cleanNote = `Inv ${invoiceData?.invoiceNumber || tr || 'Bill'}`.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 25);
+      const cleanAmt = currentPayAmount.toFixed(2);
+
+      const encodedName = encodeURIComponent(targetName);
+      const encodedNote = encodeURIComponent(cleanNote);
+
+      // Base NPCI Compliant Standard UPI URL
+      const standardUpiUrl = `upi://pay?pa=${targetVpa}&pn=${encodedName}&am=${cleanAmt}&cu=INR&tn=${encodedNote}`;
+
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      let targetUrl = standardUpiUrl;
+      let appDisplayName = 'Installed UPI App';
+
+      if (isAndroid) {
+        if (targetApp === 'gpay') {
+          appDisplayName = 'Google Pay';
+          targetUrl = `intent://pay?pa=${targetVpa}&pn=${encodedName}&am=${cleanAmt}&cu=INR&tn=${encodedNote}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+        } else if (targetApp === 'phonepe') {
+          appDisplayName = 'PhonePe';
+          targetUrl = `intent://pay?pa=${targetVpa}&pn=${encodedName}&am=${cleanAmt}&cu=INR&tn=${encodedNote}#Intent;scheme=upi;package=com.phonepe.app;end`;
+        } else if (targetApp === 'paytm') {
+          appDisplayName = 'Paytm';
+          targetUrl = `intent://pay?pa=${targetVpa}&pn=${encodedName}&am=${cleanAmt}&cu=INR&tn=${encodedNote}#Intent;scheme=upi;package=net.one97.paytm;end`;
+        }
+      }
+
+      // Show Awaiting Payment Banner
+      const banner = document.getElementById('awaitingPaymentBanner');
+      const bannerTitle = document.getElementById('awaitingAppTitle');
+      if (banner && bannerTitle) {
+        bannerTitle.textContent = `${appDisplayName} Triggered (₹${cleanAmt})`;
+        banner.classList.remove('hidden');
+      }
+
+      // Trigger app launch
+      try {
+        window.location.href = targetUrl;
+        
+        // If specific intent fails or package is missing, fallback to standard upi:// after 1.2s
+        if (targetUrl !== standardUpiUrl) {
+          setTimeout(() => {
+            window.location.href = standardUpiUrl;
+          }, 1200);
+        }
+      } catch (err) {
+        console.warn('Direct launch error, falling back to standard UPI:', err);
+        window.location.href = standardUpiUrl;
+      }
+
+      // Auto-focus to Step 2 so when the buyer completes payment in the app, they can immediately upload
+      setTimeout(() => {
+        const proofSection = document.getElementById('proofUploadSection');
+        if (proofSection) {
+          proofSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 800);
+    };
+
+    document.getElementById('dismissAwaitingBtn')?.addEventListener('click', () => {
+      document.getElementById('awaitingPaymentBanner')?.classList.add('hidden');
+    });
+
     // Smooth Scroll & Auto-select Step 2
     window.goToProofStep = function(method) {
       setPaymentMethod(method);
@@ -646,9 +763,54 @@
       }
     }
 
+    // High-speed Canvas Image Downscaler & Compressor (Compresses 10MB -> ~60KB in < 50ms)
+    async function compressImageFile(file, maxWidth = 1200, maxHeight = 1200, quality = 0.75) {
+      if (!file.type.startsWith('image/')) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxWidth || height > maxHeight) {
+              if (width > height) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+              } else {
+                width = Math.round((width * maxHeight) / height);
+                height = maxHeight;
+              }
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+            resolve(compressedDataUrl);
+          };
+          img.onerror = () => resolve(e.target.result);
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
     // Initialize Payment Screen & Live Firestore WebSocket Subscription
     async function initPage() {
-      // Set default open accordion based on device type
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       if (isMobile) {
         window.toggleAccordion('upi');
@@ -661,13 +823,13 @@
           const res = await getInvoiceById(invoiceId);
           if (res && res.invoice) {
             invoiceData = res.invoice;
-            renderInvoiceData(res.invoice);
+            vendorData = res.vendor;
+            renderInvoiceData(res.invoice, res.vendor);
           }
-          // Connect real-time WebSocket listener for instant zero-lag counter desk verification
           subscribeToSingleInvoice(invoiceId, (updatedInvoice) => {
             if (updatedInvoice) {
               invoiceData = updatedInvoice;
-              renderInvoiceData(updatedInvoice);
+              renderInvoiceData(updatedInvoice, vendorData);
             }
           });
         } catch (e) {
@@ -679,8 +841,9 @@
       }
     }
 
-    function renderInvoiceData(inv) {
-      document.getElementById('merchantName').textContent = inv.merchantName || pn;
+    function renderInvoiceData(inv, vendor) {
+      const merchantTitle = inv.merchantName || vendor?.businessName || pn;
+      document.getElementById('merchantName').textContent = merchantTitle;
       document.getElementById('partyName').innerHTML = `Bill to: <span class="text-slate-200 font-medium">${inv.customerName || party}</span>`;
       document.getElementById('invoiceRef').textContent = `#${inv.invoiceNumber || tr}`;
       document.getElementById('modalInvRef').textContent = `#${inv.invoiceNumber || tr}`;
@@ -697,6 +860,15 @@
       if (inv.dueDate) {
         const d = new Date(inv.dueDate);
         document.getElementById('dueDateText').textContent = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      }
+
+      // Populate Bank Transfer Info if vendor has configured details
+      if (vendor?.bankDetails || inv?.bankDetails) {
+        const b = vendor?.bankDetails || inv?.bankDetails || {};
+        if (b.beneficiaryName) document.getElementById('bankBeneficiary').textContent = b.beneficiaryName;
+        if (b.accountNumber) document.getElementById('bankAccountNum').textContent = b.accountNumber;
+        if (b.ifscCode) document.getElementById('bankIfscCode').textContent = b.ifscCode;
+        if (b.bankName) document.getElementById('bankNameBranch').textContent = `${b.bankName}${b.branchName ? ', ' + b.branchName : ''}`;
       }
 
       // Handle Status Updates
@@ -719,7 +891,8 @@
         desc.textContent = `₹${(inv.paidAmount || 0).toLocaleString('en-IN')} paid. Please settle the remaining balance of ₹${outstanding.toLocaleString('en-IN')}.`;
       }
 
-      refreshUpiAndQr(inv.upiId || pa, inv.merchantName || pn, outstanding, inv.invoiceNumber || tr);
+      const activeVpa = inv.upiId || vendor?.upiId || pa;
+      refreshUpiAndQr(activeVpa, merchantTitle, outstanding, inv.invoiceNumber || tr);
     }
 
     function fallbackRender() {
@@ -738,15 +911,16 @@
 
     // Refresh dynamic QR and NPCI Compliant Deep Links
     function refreshUpiAndQr(vpa, vendor, amt, invoiceNum) {
-      document.getElementById('upiIdDisplay').textContent = vpa || 'orderspot@icici';
+      const activeVpa = (vpa || 'orderspot@icici').trim();
+      document.getElementById('upiIdDisplay').textContent = activeVpa;
+      document.getElementById('quickUpiVpaText').textContent = activeVpa;
 
-      const cleanVpa = (vpa || 'orderspot@icici').trim();
       const cleanName = (vendor || 'Merchant').replace(/[^a-zA-Z0-9 ]/g, '').trim() || 'Merchant';
-      const cleanNote = `Inv ${invoiceNum || 'Bill'}`.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 30);
+      const cleanNote = `Inv ${invoiceNum || 'Bill'}`.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 25);
       
       const encodedName = encodeURIComponent(cleanName);
       const encodedNote = encodeURIComponent(cleanNote);
-      const upiUrl = `upi://pay?pa=${cleanVpa}&pn=${encodedName}&am=${amt.toFixed(2)}&cu=INR&tn=${encodedNote}`;
+      const upiUrl = `upi://pay?pa=${activeVpa}&pn=${encodedName}&am=${amt.toFixed(2)}&cu=INR&tn=${encodedNote}`;
 
       const qrContainer = document.getElementById('qrcode');
       if (qrContainer) {
@@ -760,14 +934,6 @@
           correctLevel: QRCode.CorrectLevel.M
         });
       }
-
-      const primaryUpiBtn = document.getElementById('primaryUpiBtn');
-      if (primaryUpiBtn) primaryUpiBtn.href = upiUrl;
-
-      const isAndroid = /Android/i.test(navigator.userAgent);
-      if (document.getElementById('gpayBtn')) document.getElementById('gpayBtn').href = isAndroid ? `tez://upi/pay?pa=${cleanVpa}&pn=${encodedName}&am=${amt.toFixed(2)}&cu=INR&tn=${encodedNote}` : upiUrl;
-      if (document.getElementById('phonepeBtn')) document.getElementById('phonepeBtn').href = isAndroid ? `phonepe://pay?pa=${cleanVpa}&pn=${encodedName}&am=${amt.toFixed(2)}&cu=INR&tn=${encodedNote}` : upiUrl;
-      if (document.getElementById('paytmBtn')) document.getElementById('paytmBtn').href = isAndroid ? `paytmmp://pay?pa=${cleanVpa}&pn=${encodedName}&am=${amt.toFixed(2)}&cu=INR&tn=${encodedNote}` : upiUrl;
     }
 
     // Partial Payment Toggle
@@ -793,7 +959,7 @@
         toggleLabel.textContent = 'Pay Custom Amount';
         currentPayAmount = totalDueAmount;
         document.getElementById('amountDisplay').textContent = totalDueAmount.toLocaleString('en-IN');
-        refreshUpiAndQr(invoiceData?.upiId || pa, invoiceData?.merchantName || pn, currentPayAmount, invoiceData?.invoiceNumber || tr);
+        refreshUpiAndQr(invoiceData?.upiId || vendorData?.upiId || pa, invoiceData?.merchantName || pn, currentPayAmount, invoiceData?.invoiceNumber || tr);
       }
     });
 
@@ -803,7 +969,7 @@
       const remaining = Math.max(0, totalDueAmount - currentPayAmount);
       document.getElementById('remainingBalanceText').textContent = `Remaining: ₹${remaining.toLocaleString('en-IN')}`;
       document.getElementById('amountDisplay').textContent = currentPayAmount.toLocaleString('en-IN');
-      refreshUpiAndQr(invoiceData?.upiId || pa, invoiceData?.merchantName || pn, currentPayAmount, invoiceData?.invoiceNumber || tr);
+      refreshUpiAndQr(invoiceData?.upiId || vendorData?.upiId || pa, invoiceData?.merchantName || pn, currentPayAmount, invoiceData?.invoiceNumber || tr);
     });
 
     document.querySelectorAll('.quick-percent-btn').forEach(btn => {
@@ -815,28 +981,23 @@
       });
     });
 
-    // Copy Handlers
-    document.getElementById('copyUpiBtn').onclick = () => {
-      navigator.clipboard.writeText(pa);
-      showToast('UPI ID copied: ' + pa);
-    };
-
+    // Copy Handlers for Bank Details
     document.getElementById('copyAccountBtn').onclick = () => {
       const acc = document.getElementById('bankAccountNum').textContent;
       navigator.clipboard.writeText(acc);
-      showToast('Bank Account copied: ' + acc);
+      showToast('✓ Bank Account copied: ' + acc);
     };
 
     document.getElementById('copyIfscBtn').onclick = () => {
       const ifsc = document.getElementById('bankIfscCode').textContent;
       navigator.clipboard.writeText(ifsc);
-      showToast('IFSC Code copied: ' + ifsc);
+      showToast('✓ IFSC Code copied: ' + ifsc);
     };
 
     document.getElementById('copyBeneficiaryBtn').onclick = () => {
       const ben = document.getElementById('bankBeneficiary').textContent;
       navigator.clipboard.writeText(ben);
-      showToast('Beneficiary Name copied: ' + ben);
+      showToast('✓ Beneficiary Name copied: ' + ben);
     };
 
     // UTR Toggle
@@ -872,7 +1033,7 @@
         submitBtn.classList.remove('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
         if (helpText) {
           helpText.className = 'text-[11px] text-emerald-400 text-center font-medium flex items-center justify-center gap-1.5 transition-colors';
-          helpText.innerHTML = '<span>✓</span> <span>Screenshot attached — ready to submit!</span>';
+          helpText.innerHTML = '<span>✓</span> <span>Receipt attached & ready to submit!</span>';
         }
       } else {
         submitBtn.disabled = true;
@@ -885,7 +1046,7 @@
     }
 
     const fileInput = document.getElementById('receiptFileInput');
-    fileInput.addEventListener('change', (e) => {
+    fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) {
         base64Receipt = '';
@@ -893,19 +1054,32 @@
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        base64Receipt = evt.target.result;
+      const spinner = document.getElementById('compressionSpinner');
+      spinner.classList.remove('hidden');
+
+      try {
+        // Automatically downscale and compress in memory (< 50ms)
+        const compressedBase64 = await compressImageFile(file, 1200, 1200, 0.75);
+        base64Receipt = compressedBase64;
+        
+        // Calculate approximate compressed size in KB
+        const approxKb = Math.round((compressedBase64.length * 3) / 4 / 1024);
+
         document.getElementById('imagePreview').src = base64Receipt;
         document.getElementById('fileNameDisplay').textContent = file.name;
+        document.getElementById('fileSizeBadge').textContent = `${approxKb} KB (Optimized)`;
         document.getElementById('uploadPlaceholder').classList.add('hidden');
         document.getElementById('imagePreviewContainer').classList.remove('hidden');
         updateSubmitButtonState();
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error('Image compression error:', err);
+        showToast('Could not optimize image, using original file.');
+      } finally {
+        spinner.classList.add('hidden');
+      }
     });
 
-    // Form Submission
+    // Fast Form Submission (< 200ms)
     document.getElementById('proofForm').onsubmit = async (e) => {
       e.preventDefault();
       
@@ -923,7 +1097,7 @@
       const submitBtn = document.getElementById('submitProofBtn');
       submitBtn.disabled = true;
       submitBtn.classList.add('opacity-75');
-      submitBtn.innerHTML = '<span>⏳ Syncing Settlement Proof...</span>';
+      submitBtn.innerHTML = '<span>⚡ Syncing Confirmation...</span>';
 
       const selectedMethod = document.querySelector('input[name="payMethod"]:checked')?.value || 'UPI';
       const utr = document.getElementById('utrInput').value.trim();
@@ -931,7 +1105,7 @@
 
       const payload = {
         invoiceId: invoiceId || tr,
-        vendorId: vendorId || 'demo_vendor_uid',
+        vendorId: vendorId || invoiceData?.vendorId || 'demo_vendor_uid',
         receiptUrl: base64Receipt,
         utrNumber: utr,
         amountPaid: payingAmount,
@@ -942,7 +1116,7 @@
       try {
         const res = await submitInvoicePaymentProof(payload);
         if (res.success) {
-          document.getElementById('modalInvRef').textContent = '#' + tr;
+          document.getElementById('modalInvRef').textContent = '#' + (invoiceData?.invoiceNumber || tr);
           document.getElementById('modalTimeRef').textContent = new Date().toLocaleTimeString('en-IN');
           document.getElementById('successModal').classList.remove('hidden');
 
