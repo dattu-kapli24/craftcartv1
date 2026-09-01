@@ -515,6 +515,35 @@ export async function getInvoiceById(invoiceId: string): Promise<{ invoice: Invo
   return { invoice: null, vendor: null };
 }
 
+export function subscribeToSingleInvoice(
+  invoiceId: string,
+  onUpdate: (invoice: Invoice | null) => void
+): () => void {
+  if (!invoiceId) return () => {};
+
+  try {
+    const invRef = doc(db, 'invoices', invoiceId);
+    const unsubscribe = onSnapshot(
+      invRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = { id: snapshot.id, ...snapshot.data() } as Invoice;
+          onUpdate(data);
+        } else {
+          onUpdate(null);
+        }
+      },
+      (error) => {
+        console.warn(`[Firestore] Single invoice subscription error (${invoiceId}):`, error);
+      }
+    );
+    return unsubscribe;
+  } catch (err) {
+    console.warn('Failed to attach onSnapshot listener:', err);
+    return () => {};
+  }
+}
+
 export interface SettlementProofSubmission {
   invoiceId: string;
   vendorId: string;
