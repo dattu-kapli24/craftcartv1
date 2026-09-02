@@ -647,27 +647,43 @@ export default function OrderSpotCollectPage() {
     }
   };
 
-  // Construct NPCI UPI Deep Link
+  // Robust NPCI VPA Sanitizer (removes runtime concatenation glitches e.g. '-3', '-1' & invalid characters)
+  const sanitizeUpiId = (rawVpa?: string): string => {
+    if (!rawVpa) return 'orderspot@icici';
+    let cleaned = rawVpa.trim();
+    cleaned = cleaned.replace(/-\d+$/g, '');
+    cleaned = cleaned.replace(/[-_]+$/g, '');
+    cleaned = cleaned.replace(/[^a-zA-Z0-9._\-@]/g, '');
+    if (!cleaned.includes('@') || cleaned.startsWith('@') || cleaned.endsWith('@')) {
+      return 'orderspot@icici';
+    }
+    return cleaned;
+  };
+
+  // Construct NPCI UPI Deep Link (P2M specification with mandatory MCC 5039)
   const buildUpiUrl = (inv: Invoice): string => {
-    const pa = encodeURIComponent(vendor.upiId.trim());
-    const pn = encodeURIComponent(vendor.payeeName || vendor.businessName);
-    const am = inv.amount.toFixed(2);
-    const tr = encodeURIComponent(inv.invoiceNo);
-    return `upi://pay?pa=${pa}&pn=${pn}&am=${am}&tr=${tr}&cu=INR`;
+    const cleanVpa = sanitizeUpiId(vendor.upiId);
+    const payeeVpa = encodeURIComponent(cleanVpa);
+    const businessName = encodeURIComponent((vendor.payeeName || vendor.businessName || 'OrderSpot Merchant').replace(/[^a-zA-Z0-9 .&_-]/g, '').trim() || 'OrderSpot Merchant');
+    const currentPayAmount = encodeURIComponent(inv.amount.toFixed(2));
+    const invoiceNo = encodeURIComponent((inv.invoiceNo || inv.id || 'INV-001').replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 35));
+    const merchantCategoryCode = '5039';
+    return `upi://pay?pa=${payeeVpa}&pn=${businessName}&am=${currentPayAmount}&tr=${invoiceNo}&cu=INR&mc=${merchantCategoryCode}`;
   };
 
   // Construct Mobile-Optimized Invoice Presentment & Settlement URL
   const buildPresentmentUrl = (inv: Invoice): string => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const pa = encodeURIComponent(vendor.upiId.trim());
-    const pn = encodeURIComponent(vendor.payeeName || vendor.businessName);
-    const am = inv.amount.toFixed(2);
-    const tr = encodeURIComponent(inv.invoiceNo);
+    const cleanVpa = sanitizeUpiId(vendor.upiId);
+    const pa = encodeURIComponent(cleanVpa);
+    const pn = encodeURIComponent((vendor.payeeName || vendor.businessName || 'OrderSpot Merchant').replace(/[^a-zA-Z0-9 .&_-]/g, '').trim() || 'OrderSpot Merchant');
+    const am = encodeURIComponent(inv.amount.toFixed(2));
+    const tr = encodeURIComponent((inv.invoiceNo || inv.id || 'INV-001').replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 35));
     const cust = encodeURIComponent(inv.customerName);
     const due = encodeURIComponent(inv.dueDate);
     const invId = encodeURIComponent(inv.id);
     const vId = encodeURIComponent(inv.vendorId || user?.uid || vendor.id);
-    return `${origin}/pay.html?id=${invId}&tr=${tr}&am=${am}&pa=${pa}&pn=${pn}&cust=${cust}&due=${due}&v=${vId}`;
+    return `${origin}/pay.html?id=${invId}&tr=${tr}&am=${am}&pa=${pa}&pn=${pn}&cust=${cust}&due=${due}&v=${vId}&mc=5039`;
   };
 
   // 1-Click WhatsApp Reminder Dispatch

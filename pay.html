@@ -648,6 +648,34 @@
       setTimeout(() => toast.classList.add('opacity-0'), 3200);
     }
 
+    const MERCHANT_CATEGORY_CODE = '5039';
+
+    // Strict VPA Sanitation: ruthlessly eliminates concatenation artifacts (e.g., '-3', '-1') and validates handle structure
+    function sanitizeVpa(rawVpa) {
+      if (!rawVpa || typeof rawVpa !== 'string') return 'orderspot@icici';
+      let cleaned = rawVpa.trim();
+      // Ruthlessly strip out concatenation glitches and terminal index artifacts (such as automated hyphens followed by terminal indexes like -3)
+      cleaned = cleaned.replace(/-\d+$/g, '');
+      cleaned = cleaned.replace(/[-_]+$/g, '');
+      cleaned = cleaned.replace(/[^a-zA-Z0-9._\-@]/g, '');
+      if (!cleaned.includes('@') || cleaned.startsWith('@') || cleaned.endsWith('@')) {
+        return 'orderspot@icici';
+      }
+      return cleaned;
+    }
+
+    function sanitizeBusinessName(rawName) {
+      if (!rawName || typeof rawName !== 'string') return 'OrderSpot Merchant';
+      const cleaned = rawName.replace(/[^a-zA-Z0-9 .&_-]/g, '').trim();
+      return cleaned || 'OrderSpot Merchant';
+    }
+
+    function sanitizeInvoiceNo(rawRef) {
+      if (!rawRef || typeof rawRef !== 'string') return 'INV-001';
+      const cleaned = rawRef.replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 35);
+      return cleaned || 'INV-001';
+    }
+
     // Single-Active Accordion Controller (Progressive Disclosure)
     window.toggleAccordion = function(section) {
       const sections = ['upi', 'qr', 'bank'];
@@ -681,7 +709,8 @@
 
     // Copy helper
     window.copyVpaToClipboard = function() {
-      const targetVpa = invoiceData?.upiId || vendorData?.upiId || pa || 'orderspot@icici';
+      const rawVpa = invoiceData?.upiId || vendorData?.upiId || pa || 'orderspot@icici';
+      const targetVpa = sanitizeVpa(rawVpa);
       navigator.clipboard.writeText(targetVpa).then(() => {
         showToast('✓ UPI VPA copied: ' + targetVpa);
       }).catch(() => {
@@ -689,18 +718,18 @@
       });
     };
 
-    // Robust Native UPI Deep Link Launcher with Universal Scheme Support
+    // Robust Native UPI Deep Link Launcher with Universal Scheme Support & Mandatory NPCI MCC 5039
     window.launchUpi = function(targetApp = 'any') {
-      const targetVpa = (invoiceData?.upiId || vendorData?.upiId || pa || 'orderspot@icici').trim();
-      const targetName = (invoiceData?.merchantName || vendorData?.businessName || pn || 'Merchant').replace(/[^a-zA-Z0-9 ]/g, '').trim() || 'Merchant';
-      const cleanNote = `Inv ${invoiceData?.invoiceNumber || tr || 'Bill'}`.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 25);
-      const cleanAmt = currentPayAmount.toFixed(2);
+      const rawVpa = invoiceData?.upiId || vendorData?.upiId || pa || 'orderspot@icici';
+      const payeeVpa = sanitizeVpa(rawVpa);
+      const rawName = invoiceData?.merchantName || vendorData?.businessName || pn || 'Merchant';
+      const businessName = sanitizeBusinessName(rawName);
+      const rawInvoice = invoiceData?.invoiceNumber || tr || 'INV-001';
+      const invoiceNo = sanitizeInvoiceNo(rawInvoice);
+      const currentPayAmt = Number(currentPayAmount || 0).toFixed(2);
 
-      const encodedName = encodeURIComponent(targetName);
-      const encodedNote = encodeURIComponent(cleanNote);
-
-      // Base NPCI Standard UPI URL (Universal support across GPay, PhonePe, Paytm, BHIM, CRED)
-      const standardUpiUrl = `upi://pay?pa=${targetVpa}&pn=${encodedName}&am=${cleanAmt}&cu=INR&tn=${encodedNote}`;
+      // Construct verified NPCI Peer-to-Merchant (P2M) URL with full component encoding and MCC 5039
+      const standardUpiUrl = `upi://pay?pa=${encodeURIComponent(payeeVpa)}&pn=${encodeURIComponent(businessName)}&am=${encodeURIComponent(currentPayAmt)}&tr=${encodeURIComponent(invoiceNo)}&cu=INR&mc=${MERCHANT_CATEGORY_CODE}`;
 
       let targetUrl = standardUpiUrl;
       let appDisplayName = 'Installed UPI App';
@@ -710,17 +739,17 @@
         targetUrl = standardUpiUrl;
       } else if (targetApp === 'phonepe') {
         appDisplayName = 'PhonePe';
-        targetUrl = `phonepe://pay?pa=${targetVpa}&pn=${encodedName}&am=${cleanAmt}&cu=INR&tn=${encodedNote}`;
+        targetUrl = `phonepe://pay?pa=${encodeURIComponent(payeeVpa)}&pn=${encodeURIComponent(businessName)}&am=${encodeURIComponent(currentPayAmt)}&tr=${encodeURIComponent(invoiceNo)}&cu=INR&mc=${MERCHANT_CATEGORY_CODE}`;
       } else if (targetApp === 'paytm') {
         appDisplayName = 'Paytm';
-        targetUrl = `paytmmp://pay?pa=${targetVpa}&pn=${encodedName}&am=${cleanAmt}&cu=INR&tn=${encodedNote}`;
+        targetUrl = `paytmmp://pay?pa=${encodeURIComponent(payeeVpa)}&pn=${encodeURIComponent(businessName)}&am=${encodeURIComponent(currentPayAmt)}&tr=${encodeURIComponent(invoiceNo)}&cu=INR&mc=${MERCHANT_CATEGORY_CODE}`;
       }
 
       // Show Awaiting Payment Banner
       const banner = document.getElementById('awaitingPaymentBanner');
       const bannerTitle = document.getElementById('awaitingAppTitle');
       if (banner && bannerTitle) {
-        bannerTitle.textContent = `${appDisplayName} Triggered (₹${cleanAmt})`;
+        bannerTitle.textContent = `${appDisplayName} Triggered (₹${currentPayAmt})`;
         banner.classList.remove('hidden');
       }
 
@@ -926,16 +955,15 @@
 
     // Refresh dynamic QR and NPCI Compliant Deep Links
     function refreshUpiAndQr(vpa, vendor, amt, invoiceNum) {
-      const activeVpa = (vpa || 'orderspot@icici').trim();
+      const activeVpa = sanitizeVpa(vpa);
       document.getElementById('upiIdDisplay').textContent = activeVpa;
       document.getElementById('quickUpiVpaText').textContent = activeVpa;
 
-      const cleanName = (vendor || 'Merchant').replace(/[^a-zA-Z0-9 ]/g, '').trim() || 'Merchant';
-      const cleanNote = `Inv ${invoiceNum || 'Bill'}`.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 25);
+      const cleanName = sanitizeBusinessName(vendor);
+      const cleanInvoice = sanitizeInvoiceNo(invoiceNum);
+      const cleanAmt = Number(amt || 0).toFixed(2);
       
-      const encodedName = encodeURIComponent(cleanName);
-      const encodedNote = encodeURIComponent(cleanNote);
-      const upiUrl = `upi://pay?pa=${activeVpa}&pn=${encodedName}&am=${amt.toFixed(2)}&cu=INR&tn=${encodedNote}`;
+      const upiUrl = `upi://pay?pa=${encodeURIComponent(activeVpa)}&pn=${encodeURIComponent(cleanName)}&am=${encodeURIComponent(cleanAmt)}&tr=${encodeURIComponent(cleanInvoice)}&cu=INR&mc=${MERCHANT_CATEGORY_CODE}`;
 
       const qrContainer = document.getElementById('qrcode');
       if (qrContainer) {
