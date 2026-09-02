@@ -647,12 +647,10 @@ export default function OrderSpotCollectPage() {
     }
   };
 
-  // Robust NPCI VPA Sanitizer (removes runtime concatenation glitches e.g. '-3', '-1' & invalid characters)
+  // Robust NPCI VPA Sanitizer (preserves secondary sub-handles like 8722661098-3@ybl while removing illegal characters)
   const sanitizeUpiId = (rawVpa?: string): string => {
     if (!rawVpa) return 'orderspot@icici';
     let cleaned = rawVpa.trim();
-    cleaned = cleaned.replace(/-\d+$/g, '');
-    cleaned = cleaned.replace(/[-_]+$/g, '');
     cleaned = cleaned.replace(/[^a-zA-Z0-9._\-@]/g, '');
     if (!cleaned.includes('@') || cleaned.startsWith('@') || cleaned.endsWith('@')) {
       return 'orderspot@icici';
@@ -660,15 +658,14 @@ export default function OrderSpotCollectPage() {
     return cleaned;
   };
 
-  // Construct NPCI UPI Deep Link (P2M specification with mandatory MCC 5039)
+  // Construct NPCI UPI Deep Link (Universal P2P & P2M compatible without security declines)
   const buildUpiUrl = (inv: Invoice): string => {
     const cleanVpa = sanitizeUpiId(vendor.upiId);
     const payeeVpa = encodeURIComponent(cleanVpa);
     const businessName = encodeURIComponent((vendor.payeeName || vendor.businessName || 'OrderSpot Merchant').replace(/[^a-zA-Z0-9 .&_-]/g, '').trim() || 'OrderSpot Merchant');
     const currentPayAmount = encodeURIComponent(inv.amount.toFixed(2));
     const invoiceNo = encodeURIComponent((inv.invoiceNo || inv.id || 'INV-001').replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 35));
-    const merchantCategoryCode = '5039';
-    return `upi://pay?pa=${payeeVpa}&pn=${businessName}&am=${currentPayAmount}&tr=${invoiceNo}&cu=INR&mc=${merchantCategoryCode}`;
+    return `upi://pay?pa=${payeeVpa}&pn=${businessName}&am=${currentPayAmount}&cu=INR&tn=Invoice%20${invoiceNo}`;
   };
 
   // Construct Mobile-Optimized Invoice Presentment & Settlement URL
@@ -683,7 +680,7 @@ export default function OrderSpotCollectPage() {
     const due = encodeURIComponent(inv.dueDate);
     const invId = encodeURIComponent(inv.id);
     const vId = encodeURIComponent(inv.vendorId || user?.uid || vendor.id);
-    return `${origin}/pay.html?id=${invId}&tr=${tr}&am=${am}&pa=${pa}&pn=${pn}&cust=${cust}&due=${due}&v=${vId}&mc=5039`;
+    return `${origin}/pay.html?id=${invId}&tr=${tr}&am=${am}&pa=${pa}&pn=${pn}&cust=${cust}&due=${due}&v=${vId}`;
   };
 
   // 1-Click WhatsApp Reminder Dispatch

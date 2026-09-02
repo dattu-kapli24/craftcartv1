@@ -648,15 +648,10 @@
       setTimeout(() => toast.classList.add('opacity-0'), 3200);
     }
 
-    const MERCHANT_CATEGORY_CODE = '5039';
-
-    // Strict VPA Sanitation: ruthlessly eliminates concatenation artifacts (e.g., '-3', '-1') and validates handle structure
+    // Strict VPA Sanitation: preserves legitimate handles (including secondary account indices like 8722661098-3@ybl) while removing illegal characters
     function sanitizeVpa(rawVpa) {
       if (!rawVpa || typeof rawVpa !== 'string') return 'orderspot@icici';
       let cleaned = rawVpa.trim();
-      // Ruthlessly strip out concatenation glitches and terminal index artifacts (such as automated hyphens followed by terminal indexes like -3)
-      cleaned = cleaned.replace(/-\d+$/g, '');
-      cleaned = cleaned.replace(/[-_]+$/g, '');
       cleaned = cleaned.replace(/[^a-zA-Z0-9._\-@]/g, '');
       if (!cleaned.includes('@') || cleaned.startsWith('@') || cleaned.endsWith('@')) {
         return 'orderspot@icici';
@@ -718,7 +713,7 @@
       });
     };
 
-    // Robust Native UPI Deep Link Launcher with Universal Scheme Support & Mandatory NPCI MCC 5039
+    // Robust Universal UPI Launcher (NPCI compliant for all P2P & P2M accounts without security errors)
     window.launchUpi = function(targetApp = 'any') {
       const rawVpa = invoiceData?.upiId || vendorData?.upiId || pa || 'orderspot@icici';
       const payeeVpa = sanitizeVpa(rawVpa);
@@ -727,22 +722,35 @@
       const rawInvoice = invoiceData?.invoiceNumber || tr || 'INV-001';
       const invoiceNo = sanitizeInvoiceNo(rawInvoice);
       const currentPayAmt = Number(currentPayAmount || 0).toFixed(2);
+      const cleanNote = `Invoice ${invoiceNo}`.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 25);
 
-      // Construct verified NPCI Peer-to-Merchant (P2M) URL with full component encoding and MCC 5039
-      const standardUpiUrl = `upi://pay?pa=${encodeURIComponent(payeeVpa)}&pn=${encodeURIComponent(businessName)}&am=${encodeURIComponent(currentPayAmt)}&tr=${encodeURIComponent(invoiceNo)}&cu=INR&mc=${MERCHANT_CATEGORY_CODE}`;
+      // Universal standard NPCI UPI URL (Compatible with all banking and UPI apps)
+      const standardUpiUrl = `upi://pay?pa=${encodeURIComponent(payeeVpa)}&pn=${encodeURIComponent(businessName)}&am=${encodeURIComponent(currentPayAmt)}&cu=INR&tn=${encodeURIComponent(cleanNote)}`;
 
+      const isAndroid = /Android/i.test(navigator.userAgent);
       let targetUrl = standardUpiUrl;
       let appDisplayName = 'Installed UPI App';
 
-      if (targetApp === 'gpay') {
-        appDisplayName = 'Google Pay';
+      if (isAndroid) {
+        if (targetApp === 'gpay') {
+          appDisplayName = 'Google Pay';
+          targetUrl = `intent://pay?pa=${encodeURIComponent(payeeVpa)}&pn=${encodeURIComponent(businessName)}&am=${encodeURIComponent(currentPayAmt)}&cu=INR&tn=${encodeURIComponent(cleanNote)}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+        } else if (targetApp === 'phonepe') {
+          appDisplayName = 'PhonePe';
+          targetUrl = `intent://pay?pa=${encodeURIComponent(payeeVpa)}&pn=${encodeURIComponent(businessName)}&am=${encodeURIComponent(currentPayAmt)}&cu=INR&tn=${encodeURIComponent(cleanNote)}#Intent;scheme=upi;package=com.phonepe.app;end`;
+        } else if (targetApp === 'paytm') {
+          appDisplayName = 'Paytm';
+          targetUrl = `intent://pay?pa=${encodeURIComponent(payeeVpa)}&pn=${encodeURIComponent(businessName)}&am=${encodeURIComponent(currentPayAmt)}&cu=INR&tn=${encodeURIComponent(cleanNote)}#Intent;scheme=upi;package=net.one97.paytm;end`;
+        }
+      } else {
+        if (targetApp === 'gpay') {
+          appDisplayName = 'Google Pay';
+        } else if (targetApp === 'phonepe') {
+          appDisplayName = 'PhonePe';
+        } else if (targetApp === 'paytm') {
+          appDisplayName = 'Paytm';
+        }
         targetUrl = standardUpiUrl;
-      } else if (targetApp === 'phonepe') {
-        appDisplayName = 'PhonePe';
-        targetUrl = `phonepe://pay?pa=${encodeURIComponent(payeeVpa)}&pn=${encodeURIComponent(businessName)}&am=${encodeURIComponent(currentPayAmt)}&tr=${encodeURIComponent(invoiceNo)}&cu=INR&mc=${MERCHANT_CATEGORY_CODE}`;
-      } else if (targetApp === 'paytm') {
-        appDisplayName = 'Paytm';
-        targetUrl = `paytmmp://pay?pa=${encodeURIComponent(payeeVpa)}&pn=${encodeURIComponent(businessName)}&am=${encodeURIComponent(currentPayAmt)}&tr=${encodeURIComponent(invoiceNo)}&cu=INR&mc=${MERCHANT_CATEGORY_CODE}`;
       }
 
       // Show Awaiting Payment Banner
@@ -753,7 +761,7 @@
         banner.classList.remove('hidden');
       }
 
-      // Trigger app launch via clean anchor dispatch (bypasses browser security blocks on window.location)
+      // Trigger app launch via clean anchor dispatch
       try {
         const link = document.createElement('a');
         link.href = targetUrl;
@@ -762,7 +770,7 @@
         link.click();
         document.body.removeChild(link);
 
-        // Fallback to standard universal UPI if specific app scheme doesn't open
+        // Fallback to standard universal UPI if specific intent package is missing
         if (targetUrl !== standardUpiUrl) {
           setTimeout(() => {
             const fallbackLink = document.createElement('a');
@@ -770,7 +778,7 @@
             document.body.appendChild(fallbackLink);
             fallbackLink.click();
             document.body.removeChild(fallbackLink);
-          }, 1000);
+          }, 1200);
         }
       } catch (err) {
         console.warn('Anchor dispatch error, falling back to standard UPI:', err);
@@ -962,8 +970,9 @@
       const cleanName = sanitizeBusinessName(vendor);
       const cleanInvoice = sanitizeInvoiceNo(invoiceNum);
       const cleanAmt = Number(amt || 0).toFixed(2);
+      const cleanNote = `Invoice ${cleanInvoice}`.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 25);
       
-      const upiUrl = `upi://pay?pa=${encodeURIComponent(activeVpa)}&pn=${encodeURIComponent(cleanName)}&am=${encodeURIComponent(cleanAmt)}&tr=${encodeURIComponent(cleanInvoice)}&cu=INR&mc=${MERCHANT_CATEGORY_CODE}`;
+      const upiUrl = `upi://pay?pa=${encodeURIComponent(activeVpa)}&pn=${encodeURIComponent(cleanName)}&am=${encodeURIComponent(cleanAmt)}&cu=INR&tn=${encodeURIComponent(cleanNote)}`;
 
       const qrContainer = document.getElementById('qrcode');
       if (qrContainer) {
